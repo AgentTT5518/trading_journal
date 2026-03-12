@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env*
+!.env.example
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/*
+!.claude/commands/
+
+# Test results
+tests/test-results/
