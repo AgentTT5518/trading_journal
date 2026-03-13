@@ -3,12 +3,18 @@ import { trades } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { enrichTradeWithCalculations } from './calculations';
 import { log } from '../logger';
-import type { TradeWithCalculations } from '../types';
+import type { TradeWithCalculations, ExitLeg } from '../types';
 
 export async function getTrades(): Promise<TradeWithCalculations[]> {
   try {
-    const allTrades = await db.select().from(trades).orderBy(desc(trades.entryDate));
-    return allTrades.map((t) => enrichTradeWithCalculations(t));
+    const rows = await db.query.trades.findMany({
+      with: { exitLegs: true },
+      orderBy: [desc(trades.entryDate)],
+    });
+    return rows.map((row) => {
+      const { exitLegs, ...trade } = row;
+      return enrichTradeWithCalculations(trade, exitLegs as ExitLeg[]);
+    });
   } catch (error) {
     log.error('Failed to fetch trades', error as Error);
     throw error;
@@ -17,9 +23,13 @@ export async function getTrades(): Promise<TradeWithCalculations[]> {
 
 export async function getTradeById(id: string): Promise<TradeWithCalculations | null> {
   try {
-    const result = await db.select().from(trades).where(eq(trades.id, id)).limit(1);
-    if (result.length === 0) return null;
-    return enrichTradeWithCalculations(result[0]);
+    const row = await db.query.trades.findFirst({
+      where: eq(trades.id, id),
+      with: { exitLegs: true },
+    });
+    if (!row) return null;
+    const { exitLegs, ...trade } = row;
+    return enrichTradeWithCalculations(trade, exitLegs as ExitLeg[]);
   } catch (error) {
     log.error('Failed to fetch trade', error as Error, { tradeId: id });
     throw error;

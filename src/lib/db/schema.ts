@@ -91,6 +91,25 @@ export const trades = sqliteTable('trades', {
   btcDominance: real('btc_dominance'),
   btcCorrelation: real('btc_correlation'),
 
+  // Options-specific (Phase 2)
+  optionType: text('option_type', { enum: ['call', 'put'] }),
+  strike: real('strike'),
+  expiry: text('expiry'),
+  contracts: real('contracts'),
+  contractMultiplier: real('contract_multiplier').default(100),
+  delta: real('delta'),
+  gamma: real('gamma'),
+  theta: real('theta'),
+  vega: real('vega'),
+  iv: real('iv'),
+  ivRank: real('iv_rank'),
+
+  // Spread linking (Phase 2)
+  spreadId: text('spread_id'),
+  spreadType: text('spread_type', {
+    enum: ['vertical', 'iron_condor', 'straddle', 'strangle', 'butterfly', 'calendar', 'diagonal', 'custom'],
+  }),
+
   // Metadata
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

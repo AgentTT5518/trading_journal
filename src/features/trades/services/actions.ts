@@ -1,32 +1,76 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { trades } from '@/lib/db/schema';
+import { trades, exitLegs } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { generateId } from '@/lib/ids';
-import { tradeInsertSchema } from '../validations';
+import { tradeInsertSchema, exitLegInsertSchema } from '../validations';
 import { log } from '../logger';
 import type { ActionState } from '../types';
 import { revalidatePath } from 'next/cache';
 
 /** Parse FormData into the shape tradeInsertSchema expects */
 function parseTradeFormData(raw: Record<string, FormDataEntryValue>) {
+  const num = (key: string) => (raw[key] ? Number(raw[key]) : undefined);
+  const str = (key: string) => raw[key] || undefined;
+  const nullable = (key: string) => raw[key] || undefined;
+
   return {
-    assetClass: raw.assetClass || undefined,
-    ticker: raw.ticker || undefined,
-    direction: raw.direction || undefined,
-    entryDate: raw.entryDate || undefined,
-    entryPrice: raw.entryPrice ? Number(raw.entryPrice) : undefined,
-    positionSize: raw.positionSize ? Number(raw.positionSize) : undefined,
-    orderType: raw.orderType || undefined,
-    entryTrigger: raw.entryTrigger || undefined,
-    exitDate: raw.exitDate || undefined,
+    // Core
+    assetClass: str('assetClass'),
+    ticker: str('ticker'),
+    direction: str('direction'),
+    entryDate: str('entryDate'),
+    entryPrice: num('entryPrice'),
+    positionSize: num('positionSize'),
+    orderType: str('orderType'),
+    entryTrigger: str('entryTrigger'),
+    // Exit
+    exitDate: nullable('exitDate'),
     exitPrice: raw.exitPrice ? Number(raw.exitPrice) : undefined,
-    exitReason: raw.exitReason || undefined,
+    exitReason: nullable('exitReason'),
+    // Fees
     commissions: raw.commissions ? Number(raw.commissions) : 0,
     fees: raw.fees ? Number(raw.fees) : 0,
-    notes: raw.notes || undefined,
+    notes: str('notes'),
+    // Options
+    optionType: nullable('optionType'),
+    strike: raw.strike ? Number(raw.strike) : undefined,
+    expiry: nullable('expiry'),
+    contracts: raw.contracts ? Number(raw.contracts) : undefined,
+    contractMultiplier: raw.contractMultiplier ? Number(raw.contractMultiplier) : 100,
+    delta: raw.delta ? Number(raw.delta) : undefined,
+    gamma: raw.gamma ? Number(raw.gamma) : undefined,
+    theta: raw.theta ? Number(raw.theta) : undefined,
+    vega: raw.vega ? Number(raw.vega) : undefined,
+    iv: raw.iv ? Number(raw.iv) : undefined,
+    ivRank: raw.ivRank ? Number(raw.ivRank) : undefined,
+    spreadId: nullable('spreadId'),
+    spreadType: nullable('spreadType'),
+    // Crypto
+    exchange: nullable('exchange'),
+    tradingPair: nullable('tradingPair'),
+    makerFee: raw.makerFee ? Number(raw.makerFee) : undefined,
+    takerFee: raw.takerFee ? Number(raw.takerFee) : undefined,
+    networkFee: raw.networkFee ? Number(raw.networkFee) : undefined,
+    fundingRate: raw.fundingRate ? Number(raw.fundingRate) : undefined,
+    leverage: raw.leverage ? Number(raw.leverage) : undefined,
+    liquidationPrice: raw.liquidationPrice ? Number(raw.liquidationPrice) : undefined,
+    marketCapCategory: nullable('marketCapCategory'),
+    tokenType: nullable('tokenType'),
+    btcDominance: raw.btcDominance ? Number(raw.btcDominance) : undefined,
+    btcCorrelation: raw.btcCorrelation ? Number(raw.btcCorrelation) : undefined,
   };
+}
+
+function collectFieldErrors(issues: { path: PropertyKey[]; message: string }[]) {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const issue of issues) {
+    const key = String(issue.path[0]);
+    if (!fieldErrors[key]) fieldErrors[key] = [];
+    fieldErrors[key].push(issue.message);
+  }
+  return fieldErrors;
 }
 
 export async function createTrade(
@@ -38,16 +82,10 @@ export async function createTrade(
     const parsed = tradeInsertSchema.safeParse(parseTradeFormData(raw));
 
     if (!parsed.success) {
-      const fieldErrors: Record<string, string[]> = {};
-      for (const issue of parsed.error.issues) {
-        const key = String(issue.path[0]);
-        if (!fieldErrors[key]) fieldErrors[key] = [];
-        fieldErrors[key].push(issue.message);
-      }
       return {
         success: false,
         message: 'Validation failed',
-        errors: fieldErrors,
+        errors: collectFieldErrors(parsed.error.issues),
       };
     }
 
@@ -80,16 +118,10 @@ export async function updateTrade(
     const parsed = tradeInsertSchema.safeParse(parseTradeFormData(raw));
 
     if (!parsed.success) {
-      const fieldErrors: Record<string, string[]> = {};
-      for (const issue of parsed.error.issues) {
-        const key = String(issue.path[0]);
-        if (!fieldErrors[key]) fieldErrors[key] = [];
-        fieldErrors[key].push(issue.message);
-      }
       return {
         success: false,
         message: 'Validation failed',
-        errors: fieldErrors,
+        errors: collectFieldErrors(parsed.error.issues),
       };
     }
 
@@ -118,5 +150,141 @@ export async function deleteTrade(id: string): Promise<ActionState> {
   } catch (error) {
     log.error('Failed to delete trade', error as Error, { tradeId: id });
     return { success: false, message: 'Failed to delete trade' };
+  }
+}
+
+// ─── Exit Leg Actions ─────────────────────────────────────────────────────────
+
+export async function addExitLeg(
+  tradeId: string,
+  _prevState: ActionState<{ id: string }>,
+  formData: FormData
+): Promise<ActionState<{ id: string }>> {
+  try {
+    const raw = Object.fromEntries(formData.entries());
+    const parsed = exitLegInsertSchema.safeParse({
+      exitDate: raw.exitDate || undefined,
+      exitPrice: raw.exitPrice ? Number(raw.exitPrice) : undefined,
+      quantity: raw.quantity ? Number(raw.quantity) : undefined,
+      exitReason: raw.exitReason || undefined,
+      fees: raw.fees ? Number(raw.fees) : 0,
+      notes: raw.notes || undefined,
+    });
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Validation failed',
+        errors: collectFieldErrors(parsed.error.issues),
+      };
+    }
+
+    // Validate that quantity does not exceed remaining position
+    const trade = await db.query.trades.findFirst({ where: eq(trades.id, tradeId) });
+    if (!trade) {
+      return { success: false, message: 'Trade not found' };
+    }
+
+    const existingLegs = await db.query.exitLegs.findMany({
+      where: eq(exitLegs.tradeId, tradeId),
+    });
+    const alreadyExited = existingLegs.reduce((s, l) => s + l.quantity, 0);
+    const remaining = trade.positionSize - alreadyExited;
+
+    if (parsed.data.quantity > remaining) {
+      return {
+        success: false,
+        message: 'Validation failed',
+        errors: { quantity: [`Quantity exceeds remaining position (${remaining})`] },
+      };
+    }
+
+    const id = generateId();
+    const now = new Date().toISOString();
+
+    await db.insert(exitLegs).values({
+      id,
+      tradeId,
+      ...parsed.data,
+      createdAt: now,
+    });
+
+    log.info('Exit leg added', { legId: id, tradeId });
+    revalidatePath('/trades');
+    revalidatePath(`/trades/${tradeId}`);
+    return { success: true, data: { id } };
+  } catch (error) {
+    log.error('Failed to add exit leg', error as Error, { tradeId });
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+export async function updateExitLeg(
+  legId: string,
+  tradeId: string,
+  _prevState: ActionState<{ id: string }>,
+  formData: FormData
+): Promise<ActionState<{ id: string }>> {
+  try {
+    const raw = Object.fromEntries(formData.entries());
+    const parsed = exitLegInsertSchema.safeParse({
+      exitDate: raw.exitDate || undefined,
+      exitPrice: raw.exitPrice ? Number(raw.exitPrice) : undefined,
+      quantity: raw.quantity ? Number(raw.quantity) : undefined,
+      exitReason: raw.exitReason || undefined,
+      fees: raw.fees ? Number(raw.fees) : 0,
+      notes: raw.notes || undefined,
+    });
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Validation failed',
+        errors: collectFieldErrors(parsed.error.issues),
+      };
+    }
+
+    // Validate quantity doesn't exceed remaining (excluding this leg's current quantity)
+    const trade = await db.query.trades.findFirst({ where: eq(trades.id, tradeId) });
+    if (!trade) return { success: false, message: 'Trade not found' };
+
+    const existingLegs = await db.query.exitLegs.findMany({
+      where: eq(exitLegs.tradeId, tradeId),
+    });
+    const otherLegsTotal = existingLegs
+      .filter((l) => l.id !== legId)
+      .reduce((s, l) => s + l.quantity, 0);
+    const remaining = trade.positionSize - otherLegsTotal;
+
+    if (parsed.data.quantity > remaining) {
+      return {
+        success: false,
+        message: 'Validation failed',
+        errors: { quantity: [`Quantity exceeds remaining position (${remaining})`] },
+      };
+    }
+
+    await db.update(exitLegs).set(parsed.data).where(eq(exitLegs.id, legId));
+
+    log.info('Exit leg updated', { legId, tradeId });
+    revalidatePath('/trades');
+    revalidatePath(`/trades/${tradeId}`);
+    return { success: true, data: { id: legId } };
+  } catch (error) {
+    log.error('Failed to update exit leg', error as Error, { legId, tradeId });
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+export async function deleteExitLeg(legId: string, tradeId: string): Promise<ActionState> {
+  try {
+    await db.delete(exitLegs).where(eq(exitLegs.id, legId));
+    log.info('Exit leg deleted', { legId, tradeId });
+    revalidatePath('/trades');
+    revalidatePath(`/trades/${tradeId}`);
+    return { success: true };
+  } catch (error) {
+    log.error('Failed to delete exit leg', error as Error, { legId, tradeId });
+    return { success: false, message: 'Failed to delete exit leg' };
   }
 }

@@ -1,9 +1,9 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-13 | Updated by: Claude Code
+> Last updated: 2026-03-13 (Phase 2) | Updated by: Claude Code
 
 ## System Overview
-Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 1 (MVP — Stock Trade Logging).
+Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 2 (Options, Crypto & Partial Exits).
 
 ## Architecture Diagram
 ```mermaid
@@ -13,7 +13,7 @@ graph TB
     end
 
     subgraph Server
-        SA[Server Actions<br/>createTrade, updateTrade, deleteTrade]
+        SA[Server Actions<br/>createTrade, updateTrade, deleteTrade, addExitLeg, updateExitLeg, deleteExitLeg]
         SC[Server Components<br/>trades pages]
         CALC[Calculations<br/>P&L, status derivation]
     end
@@ -32,18 +32,20 @@ graph TB
 
 | Component | Location | Responsibility | Dependencies |
 |-----------|----------|----------------|--------------|
-| TradeForm | `src/features/trades/components/trade-form.tsx` | Trade entry form (4 card sections) | Server action `createTrade`, shadcn/ui |
-| TradeList | `src/features/trades/components/trade-list.tsx` | Table of trades with P&L | PnlBadge, LinkButton |
-| TradeDetail | `src/features/trades/components/trade-detail.tsx` | Detail view with edit link and delete dialog | Server action `deleteTrade`, LinkButton |
+| TradeForm | `src/features/trades/components/trade-form.tsx` | Trade entry form with asset class switching (stock/option/crypto) | Server action `createTrade`, shadcn/ui |
+| TradeList | `src/features/trades/components/trade-list.tsx` | Table of trades with P&L; spread grouping; partial/open/closed status | PnlBadge, LinkButton |
+| TradeDetail | `src/features/trades/components/trade-detail.tsx` | Detail view with options/crypto info cards and exit legs section | `deleteTrade`, ExitLegsSection, LinkButton |
+| ExitLegsSection | `src/features/trades/components/exit-legs-section.tsx` | Per-leg table with progress bar, add/edit/delete | ExitLegForm, server actions |
+| ExitLegForm | `src/features/trades/components/exit-leg-form.tsx` | Inline form for add/edit a single exit leg | `addExitLeg`, `updateExitLeg` |
+| TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form with conditional options/crypto sections | Server action `updateTrade`, shadcn/ui |
 | Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Trades active, others disabled) | lucide-react |
 | PageHeader | `src/shared/components/page-header.tsx` | Title + description + action slot | — |
 | EmptyState | `src/shared/components/empty-state.tsx` | Dashed border message + action | — |
 | PnlBadge | `src/shared/components/pnl-badge.tsx` | Green/red currency badge | formatCurrency |
 | LinkButton | `src/shared/components/link-button.tsx` | Next.js Link styled as button | buttonVariants |
-| Calculations | `src/features/trades/services/calculations.ts` | grossPnl, netPnl, rMultiple, holdingDays, deriveStatus | — |
-| Queries | `src/features/trades/services/queries.ts` | getTrades, getTradeById | Drizzle, calculations |
-| TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form pre-populated from existing trade | Server action `updateTrade`, shadcn/ui |
-| Actions | `src/features/trades/services/actions.ts` | createTrade, updateTrade, deleteTrade server actions | Drizzle, Zod validation |
+| Calculations | `src/features/trades/services/calculations.ts` | grossPnl, netPnl, rMultiple, holdingDays, dte, deriveStatus (exit-legs aware), calculateExitLegsPnl, getPositionMultiplier | — |
+| Queries | `src/features/trades/services/queries.ts` | getTrades, getTradeById (both join exitLegs) | Drizzle relational queries, calculations |
+| Actions | `src/features/trades/services/actions.ts` | createTrade, updateTrade, deleteTrade, addExitLeg, updateExitLeg, deleteExitLeg | Drizzle, Zod validation |
 
 ## Data Model
 
@@ -51,27 +53,33 @@ graph TB
 
 | Entity | Storage | Key Fields | Relationships |
 |--------|---------|------------|---------------|
-| Trade | `trades` table | id, assetClass, ticker, direction, entryDate, entryPrice, positionSize, exitDate, exitPrice, commissions, fees | Has many ExitLegs (Phase 2) |
-| ExitLeg | `exit_legs` table | id, tradeId, exitDate, exitPrice, quantity, reason | Belongs to Trade |
+| Trade | `trades` table | id, assetClass, ticker, direction, entryDate, entryPrice, positionSize, exitDate, exitPrice, commissions, fees, + options/crypto/spread columns | Has many ExitLegs |
+| ExitLeg | `exit_legs` table | id, tradeId, exitDate, exitPrice, quantity, exitReason, fees | Belongs to Trade (cascade delete) |
 
 ### Schema Notes
 - All IDs are nanoid(12) text primary keys
 - Dates stored as UTC ISO 8601 strings (`text` columns)
 - P&L is never stored — computed at query time from trade data
-- Trade status is derived: no exitDate = "open", has exitDate = "closed"
-- Phase 2+ columns on `trades` are nullable (options Greeks, crypto fields, psychology, etc.)
-- `exit_legs` table defined in schema but not wired in Phase 1
-- Using `drizzle-kit push` for Phase 1; will switch to `generate + migrate` before Phase 2
+- Trade status is derived: no exitDate + no legs = "open"; partial legs = "partial"; full legs or exitDate = "closed"
+- When exit legs exist, they are authoritative for P&L and status; top-level exitPrice/exitDate are ignored
+- DTE is computed from `expiry - entryDate` (not stored)
+- Options multiplier: `contractMultiplier` column (default 100); P&L = `(exit-entry) × contracts × multiplier`
+- Crypto net P&L subtracts `makerFee + takerFee + networkFee` in addition to commissions/fees
+- Spread linking: trades share a `spreadId`; grouped in list view; spread P&L is sum of leg P&Ls
+- Phase 4+ columns on `trades` are nullable (psychology, swing context, technical indicators)
 
 ## API Endpoints
 
-Phase 1 uses Server Actions only — no API routes.
+Server Actions only — no API routes.
 
 | Type | Function | Description | Auth |
 |------|----------|-------------|------|
-| Server Action | `createTrade` | Validate FormData with Zod, insert trade | None |
-| Server Action | `updateTrade` | Validate FormData with Zod, update trade by ID | None |
-| Server Action | `deleteTrade` | Delete trade by ID, revalidate `/trades` | None |
+| Server Action | `createTrade` | Validate FormData (stock/option/crypto), insert trade | None |
+| Server Action | `updateTrade` | Validate FormData, update trade by ID | None |
+| Server Action | `deleteTrade` | Delete trade + cascade exit legs, revalidate `/trades` | None |
+| Server Action | `addExitLeg` | Validate FormData, validate quantity ≤ remaining, insert exit leg | None |
+| Server Action | `updateExitLeg` | Validate FormData, re-validate quantity, update exit leg | None |
+| Server Action | `deleteExitLeg` | Delete exit leg by ID, revalidate trade paths | None |
 
 Future API routes (Phase 3+):
 - `GET /api/screenshots/[id]` — serve images from `data/screenshots/`
@@ -117,12 +125,16 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 
 ## Key Patterns
 
-- **Computed P&L**: Never stored. Derived at query time via `enrichTradeWithCalculations()`.
-- **Derived status**: Computed from `exitDate` presence in `deriveStatus()`.
+- **Computed P&L**: Never stored. Derived at query time via `enrichTradeWithCalculations(trade, exitLegs)`.
+- **Exit legs precedence**: When exit legs exist, they are authoritative for P&L and status. Top-level exitPrice/exitDate ignored.
+- **Asset class dispatch**: `getPositionMultiplier()` returns 1 (stock/crypto) or `contractMultiplier` (option). P&L uses `getEffectiveSize()`.
+- **Derived status**: `deriveStatus(trade, legs)` — partial/closed from leg quantities; falls back to exitDate.
+- **DTE computed**: `calculateDte(entryDate, expiry)` — no stored column.
+- **Spread grouping**: Client-side partition in TradeList by `spreadId`. Fine for solo trader scale.
 - **Base UI render prop**: shadcn/ui uses Base UI. Use `render` prop (not `asChild`).
 - **LinkButton wrapper**: Solves server/client component boundary for Link + buttonVariants.
 - **UTC storage, local display**: Dates stored as UTC ISO 8601, formatted to local time on client.
-- **Server Actions only**: No API routes in Phase 1. Mutations via `useActionState` + form actions.
+- **Server Actions only**: No API routes. Mutations via `useActionState` + form actions.
 
 ## Feature Log
 
@@ -130,6 +142,7 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 |---------|------|---------------|---------------|
 | Project Scaffold | 2026-03-12 | Next.js 15, SQLite/Drizzle, shadcn/ui Base UI, Vitest | Initial project files |
 | Phase 1: Trade CRUD MVP | 2026-03-12 | Server Actions (no API routes), computed P&L, derived status, nanoid(12) IDs, single exit (no exit_legs logic), LinkButton pattern for server/client boundary | `src/features/trades/`, `src/shared/`, `src/app/(app)/trades/`, `src/lib/`, tests |
+| Phase 2: Options, Crypto & Partial Exits | 2026-03-13 | Options P&L (×contractMultiplier), crypto fee subtraction, exit legs wired (authoritative for P&L/status), partial status, spread linking by spreadId, conditional form sections per asset class, DTE computed not stored | `src/lib/db/schema.ts` (+17 cols), all files in `src/features/trades/`, 114 tests passing |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
