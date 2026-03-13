@@ -129,13 +129,129 @@ export const exitLegs = sqliteTable('exit_legs', {
 });
 
 // ============================================================
+// PLAYBOOKS (Phase 7b)
+// ============================================================
+
+export const playbooks = sqliteTable('playbooks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  entryRules: text('entry_rules'),
+  exitRules: text('exit_rules'),
+  marketConditions: text('market_conditions'),
+  positionSizingRules: text('position_sizing_rules'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ============================================================
+// TAGS (Phase 7a)
+// ============================================================
+
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category', {
+    enum: [
+      'strategy',
+      'market_condition',
+      'timeframe',
+      'instrument',
+      'execution',
+      'mistake',
+    ],
+  }).notNull(),
+  playbookId: text('playbook_id').references(() => playbooks.id, { onDelete: 'set null' }),
+  isCustom: integer('is_custom', { mode: 'boolean' }).default(false).notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const tradeTags = sqliteTable('trade_tags', {
+  id: text('id').primaryKey(),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+  tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+});
+
+// ============================================================
+// SCREENSHOTS (Phase 6)
+// ============================================================
+
+export const screenshots = sqliteTable('screenshots', {
+  id: text('id').primaryKey(),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+  filename: text('filename').notNull(),
+  originalName: text('original_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+});
+
+// ============================================================
+// REVIEWS (Phase 8)
+// ============================================================
+
+export const reviews = sqliteTable('reviews', {
+  id: text('id').primaryKey(),
+  type: text('type', { enum: ['daily', 'weekly', 'monthly'] }).notNull(),
+  startDate: text('start_date').notNull(),
+  endDate: text('end_date').notNull(),
+  grade: text('grade', { enum: ['A', 'B', 'C', 'D', 'F'] }),
+  notes: text('notes'),
+  lessonsLearned: text('lessons_learned'),
+  goalsForNext: text('goals_for_next'),
+  rulesFollowed: text('rules_followed'), // JSON array stored as text
+  rulesBroken: text('rules_broken'), // JSON array stored as text
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const reviewTrades = sqliteTable('review_trades', {
+  id: text('id').primaryKey(),
+  reviewId: text('review_id').notNull().references(() => reviews.id, { onDelete: 'cascade' }),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+});
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
 export const tradesRelations = relations(trades, ({ many }) => ({
   exitLegs: many(exitLegs),
+  tradeTags: many(tradeTags),
+  screenshots: many(screenshots),
+  reviewTrades: many(reviewTrades),
 }));
 
 export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
   trade: one(trades, { fields: [exitLegs.tradeId], references: [trades.id] }),
+}));
+
+export const playbooksRelations = relations(playbooks, ({ many }) => ({
+  tags: many(tags),
+}));
+
+export const tagsRelations = relations(tags, ({ one, many }) => ({
+  playbook: one(playbooks, { fields: [tags.playbookId], references: [playbooks.id] }),
+  tradeTags: many(tradeTags),
+}));
+
+export const tradeTagsRelations = relations(tradeTags, ({ one }) => ({
+  trade: one(trades, { fields: [tradeTags.tradeId], references: [trades.id] }),
+  tag: one(tags, { fields: [tradeTags.tagId], references: [tags.id] }),
+}));
+
+export const screenshotsRelations = relations(screenshots, ({ one }) => ({
+  trade: one(trades, { fields: [screenshots.tradeId], references: [trades.id] }),
+}));
+
+export const reviewsRelations = relations(reviews, ({ many }) => ({
+  reviewTrades: many(reviewTrades),
+}));
+
+export const reviewTradesRelations = relations(reviewTrades, ({ one }) => ({
+  review: one(reviews, { fields: [reviewTrades.reviewId], references: [reviews.id] }),
+  trade: one(trades, { fields: [reviewTrades.tradeId], references: [trades.id] }),
 }));

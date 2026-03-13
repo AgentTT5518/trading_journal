@@ -38,6 +38,41 @@ export const tradeInsertSchema = z
       .optional()
       .nullable(),
 
+    // Psychology fields (Phase 4)
+    preMood: z.number().int().min(1).max(10).optional().nullable(),
+    preConfidence: z.number().int().min(1).max(10).optional().nullable(),
+    fomoFlag: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+    revengeFlag: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+    anxietyDuring: z.number().int().min(1).max(10).optional().nullable(),
+    urgeToExitEarly: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+    urgeToAdd: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+    executionSatisfaction: z.number().int().min(1).max(10).optional().nullable(),
+    lessonsLearned: z.string().optional().nullable(),
+    tradeGrade: z.enum(['A', 'B', 'C', 'D', 'F']).optional().nullable(),
+
+    // Swing context (Phase 5)
+    plannedHoldDays: z.number().int().positive().optional().nullable(),
+    heldOverWeekend: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+    heldThroughEarnings: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+    heldThroughMacro: z.preprocess((v) => v === 'on' || v === 'true' || v === true, z.boolean()).optional().nullable(),
+
+    // Market context (Phase 5)
+    weeklyTrend: z.enum(['up', 'down', 'sideways']).optional().nullable(),
+    marketRegime: z.enum(['trending', 'choppy', 'high_vol', 'low_vol']).optional().nullable(),
+    vixLevel: z.number().min(0).optional().nullable(),
+    supportLevel: z.number().positive().optional().nullable(),
+    resistanceLevel: z.number().positive().optional().nullable(),
+    sectorPerformance: z.string().optional().nullable(),
+    upcomingCatalysts: z.string().optional().nullable(),
+
+    // Technical context (Phase 5)
+    rsiAtEntry: z.number().min(0).max(100).optional().nullable(),
+    macdAtEntry: z.string().optional().nullable(),
+    distanceFrom50ma: z.number().optional().nullable(),
+    distanceFrom200ma: z.number().optional().nullable(),
+    volumeProfile: z.enum(['above_avg', 'below_avg', 'avg']).optional().nullable(),
+    atrAtEntry: z.number().min(0).optional().nullable(),
+
     // Crypto fields
     exchange: z.string().optional().nullable(),
     tradingPair: z.string().optional().nullable(),

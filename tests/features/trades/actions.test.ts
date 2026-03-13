@@ -5,13 +5,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Hoisted mocks (declared before vi.mock hoisting) ────────────────────────
-const { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany } = vi.hoisted(() => {
+const { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany, mockTransaction } = vi.hoisted(() => {
   const mockInsert = vi.fn();
   const mockDelete = vi.fn();
   const mockUpdate = vi.fn();
   const mockFindFirst = vi.fn();
   const mockFindMany = vi.fn();
-  return { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany };
+  const mockTransaction = vi.fn();
+  return { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany, mockTransaction };
 });
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ vi.mock('@/lib/db', () => ({
     insert: mockInsert,
     delete: mockDelete,
     update: mockUpdate,
+    transaction: mockTransaction,
     query: {
       trades: { findFirst: mockFindFirst },
       exitLegs: { findMany: mockFindMany },
@@ -134,12 +136,120 @@ describe('createTrade', () => {
   });
 });
 
+// ─── createTrade with market context ─────────────────────────────────────────
+describe('createTrade — context fields', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('persists swing and market context fields', async () => {
+    const mockValues = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockValues });
+
+    const fd = makeFormData({
+      ...validTradeFields,
+      plannedHoldDays: '5',
+      heldOverWeekend: 'on',
+      weeklyTrend: 'up',
+      marketRegime: 'trending',
+      vixLevel: '20.5',
+      rsiAtEntry: '55',
+      macdAtEntry: 'bullish crossover',
+      distanceFrom50ma: '-2.5',
+      volumeProfile: 'above_avg',
+      atrAtEntry: '3.5',
+    });
+    const result = await createTrade(initialState, fd);
+
+    expect(result.success).toBe(true);
+    const row = mockValues.mock.calls[0][0];
+    expect(row.plannedHoldDays).toBe(5);
+    expect(row.heldOverWeekend).toBe(true);
+    expect(row.weeklyTrend).toBe('up');
+    expect(row.marketRegime).toBe('trending');
+    expect(row.vixLevel).toBe(20.5);
+    expect(row.rsiAtEntry).toBe(55);
+    expect(row.macdAtEntry).toBe('bullish crossover');
+    expect(row.distanceFrom50ma).toBe(-2.5);
+    expect(row.volumeProfile).toBe('above_avg');
+    expect(row.atrAtEntry).toBe(3.5);
+  });
+});
+
+// ─── createTrade with psychology ──────────────────────────────────────────────
+describe('createTrade — psychology fields', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('persists psychology fields when provided', async () => {
+    const mockValues = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockValues });
+
+    const fd = makeFormData({
+      ...validTradeFields,
+      preMood: '7',
+      preConfidence: '8',
+      fomoFlag: 'on',
+      anxietyDuring: '5',
+      executionSatisfaction: '9',
+      tradeGrade: 'B',
+      lessonsLearned: 'Waited for confirmation',
+    });
+    const result = await createTrade(initialState, fd);
+
+    expect(result.success).toBe(true);
+    const row = mockValues.mock.calls[0][0];
+    expect(row.preMood).toBe(7);
+    expect(row.preConfidence).toBe(8);
+    expect(row.fomoFlag).toBe(true);
+    expect(row.anxietyDuring).toBe(5);
+    expect(row.executionSatisfaction).toBe(9);
+    expect(row.tradeGrade).toBe('B');
+    expect(row.lessonsLearned).toBe('Waited for confirmation');
+  });
+
+  it('defaults boolean flags to false when unchecked', async () => {
+    const mockValues = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockValues });
+
+    const fd = makeFormData(validTradeFields); // no fomoFlag or revengeFlag
+    const result = await createTrade(initialState, fd);
+
+    expect(result.success).toBe(true);
+    const row = mockValues.mock.calls[0][0];
+    expect(row.fomoFlag).toBe(false);
+    expect(row.revengeFlag).toBe(false);
+  });
+
+  it('rejects invalid psychology values', async () => {
+    const fd = makeFormData({
+      ...validTradeFields,
+      preMood: '15', // above 10
+    });
+    const result = await createTrade(initialState, fd);
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.preMood).toBeDefined();
+  });
+});
+
 // ─── updateTrade ──────────────────────────────────────────────────────────────
 describe('updateTrade', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUpdate.mockReturnValue({
       set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    // syncTradeTags uses db.transaction — execute the callback with mock tx
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+      const mockTx = {
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+      };
+      await fn(mockTx);
     });
   });
 

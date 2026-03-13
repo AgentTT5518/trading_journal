@@ -25,6 +25,12 @@ import {
 } from '@/shared/utils/formatting';
 import { deleteTrade } from '../services/actions';
 import { ExitLegsSection } from './exit-legs-section';
+import { TagBadge } from '@/features/playbooks/components/tag-badge';
+import { ScreenshotGallery } from '@/features/screenshots/components/screenshot-gallery';
+import { ScreenshotUpload } from '@/features/screenshots/components/screenshot-upload';
+import type { TradeTagWithTag } from '@/features/playbooks/types';
+import type { TagCategory } from '@/features/playbooks/types';
+import type { Screenshot } from '@/features/screenshots/types';
 import type { TradeWithCalculations } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +54,13 @@ function StatusBadge({ status }: { status: 'open' | 'partial' | 'closed' }) {
   return <Badge variant="outline">Closed</Badge>;
 }
 
-export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
+interface TradeDetailProps {
+  trade: TradeWithCalculations;
+  tradeTags?: TradeTagWithTag[];
+  screenshots?: Screenshot[];
+}
+
+export function TradeDetail({ trade, tradeTags = [], screenshots = [] }: TradeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -281,6 +293,198 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Swing Context */}
+      {(trade.plannedHoldDays != null ||
+        trade.heldOverWeekend ||
+        trade.heldThroughEarnings ||
+        trade.heldThroughMacro) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Swing Context</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {trade.plannedHoldDays != null && (
+              <DetailRow label="Planned Hold" value={`${trade.plannedHoldDays} days`} />
+            )}
+            {trade.heldOverWeekend && <DetailRow label="Held Over Weekend" value="Yes" />}
+            {trade.heldThroughEarnings && <DetailRow label="Held Through Earnings" value="Yes" />}
+            {trade.heldThroughMacro && <DetailRow label="Held Through Macro" value="Yes" />}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Market & Technical Context */}
+      {(trade.weeklyTrend ||
+        trade.marketRegime ||
+        trade.vixLevel != null ||
+        trade.rsiAtEntry != null ||
+        trade.atrAtEntry != null) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Market & Technical</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {trade.weeklyTrend && (
+              <DetailRow
+                label="Weekly Trend"
+                value={
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      trade.weeklyTrend === 'up' && 'border-green-500/50 text-green-700 dark:text-green-400',
+                      trade.weeklyTrend === 'down' && 'border-red-500/50 text-red-700 dark:text-red-400',
+                      trade.weeklyTrend === 'sideways' && 'border-yellow-500/50 text-yellow-700 dark:text-yellow-400'
+                    )}
+                  >
+                    {trade.weeklyTrend.toUpperCase()}
+                  </Badge>
+                }
+              />
+            )}
+            {trade.marketRegime && (
+              <DetailRow
+                label="Market Regime"
+                value={
+                  <Badge variant="outline">
+                    {trade.marketRegime.replace(/_/g, ' ')}
+                  </Badge>
+                }
+              />
+            )}
+            {trade.vixLevel != null && <DetailRow label="VIX" value={trade.vixLevel.toFixed(1)} />}
+            {trade.supportLevel != null && <DetailRow label="Support" value={formatPrice(trade.supportLevel)} />}
+            {trade.resistanceLevel != null && <DetailRow label="Resistance" value={formatPrice(trade.resistanceLevel)} />}
+            {trade.rsiAtEntry != null && <DetailRow label="RSI" value={trade.rsiAtEntry.toFixed(1)} />}
+            {trade.macdAtEntry && <DetailRow label="MACD" value={trade.macdAtEntry} />}
+            {trade.distanceFrom50ma != null && <DetailRow label="Dist. 50-MA" value={`$${trade.distanceFrom50ma.toFixed(2)}`} />}
+            {trade.distanceFrom200ma != null && <DetailRow label="Dist. 200-MA" value={`$${trade.distanceFrom200ma.toFixed(2)}`} />}
+            {trade.volumeProfile && (
+              <DetailRow label="Volume" value={trade.volumeProfile.replace(/_/g, ' ')} />
+            )}
+            {trade.atrAtEntry != null && <DetailRow label="ATR" value={trade.atrAtEntry.toFixed(2)} />}
+            {trade.sectorPerformance && <DetailRow label="Sector" value={trade.sectorPerformance} />}
+            {trade.upcomingCatalysts && <DetailRow label="Catalysts" value={trade.upcomingCatalysts} />}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Psychology */}
+      {(trade.preMood != null ||
+        trade.preConfidence != null ||
+        trade.fomoFlag ||
+        trade.revengeFlag ||
+        trade.anxietyDuring != null ||
+        trade.executionSatisfaction != null ||
+        trade.tradeGrade ||
+        trade.lessonsLearned) && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Psychology</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+              {trade.preMood != null && (
+                <DetailRow label="Pre-Trade Mood" value={`${trade.preMood}/10`} />
+              )}
+              {trade.preConfidence != null && (
+                <DetailRow label="Confidence" value={`${trade.preConfidence}/10`} />
+              )}
+              {trade.fomoFlag && (
+                <DetailRow
+                  label="FOMO"
+                  value={
+                    <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
+                      Yes
+                    </Badge>
+                  }
+                />
+              )}
+              {trade.revengeFlag && (
+                <DetailRow
+                  label="Revenge Trade"
+                  value={
+                    <Badge variant="outline" className="border-red-500/50 text-red-700 dark:text-red-400">
+                      Yes
+                    </Badge>
+                  }
+                />
+              )}
+              {trade.anxietyDuring != null && (
+                <DetailRow label="Anxiety During" value={`${trade.anxietyDuring}/10`} />
+              )}
+              {trade.urgeToExitEarly && (
+                <DetailRow label="Urge to Exit Early" value="Yes" />
+              )}
+              {trade.urgeToAdd && (
+                <DetailRow label="Urge to Add" value="Yes" />
+              )}
+              {trade.executionSatisfaction != null && (
+                <DetailRow
+                  label="Execution Satisfaction"
+                  value={`${trade.executionSatisfaction}/10`}
+                />
+              )}
+              {trade.tradeGrade && (
+                <DetailRow
+                  label="Grade"
+                  value={
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        trade.tradeGrade === 'A' && 'border-green-500/50 text-green-700 dark:text-green-400',
+                        trade.tradeGrade === 'B' && 'border-blue-500/50 text-blue-700 dark:text-blue-400',
+                        trade.tradeGrade === 'C' && 'border-yellow-500/50 text-yellow-700 dark:text-yellow-400',
+                        trade.tradeGrade === 'D' && 'border-orange-500/50 text-orange-700 dark:text-orange-400',
+                        trade.tradeGrade === 'F' && 'border-red-500/50 text-red-700 dark:text-red-400'
+                      )}
+                    >
+                      {trade.tradeGrade}
+                    </Badge>
+                  }
+                />
+              )}
+            </div>
+            {trade.lessonsLearned && (
+              <div className="mt-4 border-t pt-4">
+                <p className="text-sm text-muted-foreground mb-1">Lessons Learned</p>
+                <p className="whitespace-pre-wrap text-sm">{trade.lessonsLearned}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tags */}
+      {tradeTags.length > 0 && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Tags</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {tradeTags.map((tt) => (
+                <TagBadge
+                  key={tt.id}
+                  name={tt.tag.name}
+                  category={tt.tag.category as TagCategory}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Screenshots */}
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Screenshots</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ScreenshotGallery screenshots={screenshots} tradeId={trade.id} />
+          <ScreenshotUpload tradeId={trade.id} />
+        </CardContent>
+      </Card>
 
       {/* Exit Legs Section */}
       <ExitLegsSection trade={trade} />
