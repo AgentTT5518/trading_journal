@@ -1,54 +1,50 @@
 # CLAUDE.md
 
-## Setup Checklist
-<!-- Complete ALL items before starting any feature work. Remove each [ ] as you go. -->
-- [ ] Fill in Project Identity table below
-- [ ] Replace `[pm]` with your package manager in Commands and Rules
-- [ ] Update Project Structure with your actual folders
-- [ ] Add project-specific code conventions (fonts, colors, patterns)
-- [ ] Define SECRET_SCAN_PATTERNS for your API keys
-- [ ] Verify `.gitignore` includes `.env*` and `!.env.example`
-- [ ] Copy `docs/templates/logger-template.ts` to `src/lib/logger.ts`
-- [ ] Create ARCHITECTURE.md from template at project root
-- [ ] Run `/project-setup` to scaffold additional artifacts (skills, evals, brand docs)
-<!-- DELETE this checklist once all items are done — a clean CLAUDE.md = a configured project -->
-
 ## Project Identity
 | Field | Value |
 |-------|-------|
-| Name | [Project Name] |
-| Description | [1 sentence — what it does, who it serves] |
-| Framework | [e.g. Next.js 14 / React 19 + Vite / SvelteKit] |
+| Name | Trading Journal |
+| Description | Local-first swing trading journal for stocks, options, and crypto — trade logging, P&L tracking, psychology, and analytics for a solo trader |
+| Framework | Next.js 15 (App Router) |
 | Language | TypeScript (strict mode) |
-| Styling | [e.g. Tailwind CSS 4.x] |
-| Database | [e.g. SQLite via Drizzle / Firebase Firestore / Supabase] |
-| AI Provider | [e.g. Claude API / Gemini / OpenAI] |
-| Auth | [e.g. Firebase Auth / simple password / none] |
-| Package Manager | [npm / pnpm / bun] |
-| Test Runner | [e.g. Vitest / Jest] |
-| Deployment | [e.g. Vercel / local / AWS] |
-| Dev Server Port | [e.g. 3000 / 5173] |
+| Styling | Tailwind CSS 4 + shadcn/ui (Base UI) |
+| Database | SQLite via Drizzle ORM + better-sqlite3 |
+| AI Provider | None |
+| Auth | None (solo user, localhost only) |
+| Package Manager | npm |
+| Test Runner | Vitest |
+| Deployment | Local (localhost) |
+| Dev Server Port | 5180 |
 
 ## Commands
 ```
-[pm] dev             # Start dev server
-[pm] build           # Production build
-[pm] test            # Run all tests
-[pm] lint            # Lint check
-[pm] typecheck       # TypeScript check
+npm run dev             # Start dev server (port 5180)
+npm run build           # Production build
+npm run test            # Run all tests
+npm run lint            # Lint check
+npm run typecheck       # TypeScript check
+npm run db:push         # Push schema to SQLite
+npm run db:studio       # Open Drizzle Studio
 ```
-<!-- Replace [pm] with your package manager. Add project-specific commands as needed. -->
 
 ## Project Structure
 ```
 src/
   app/                    # Pages / routes
+    (app)/                # Shared sidebar layout group
+      trades/             # Trade CRUD pages
+  components/ui/          # shadcn/ui primitives
   features/               # Feature modules (each has its own CLAUDE.md)
-    [feature-name]/
+    trades/               # Trade logging, P&L, list, form, detail
       CLAUDE.md           # Feature boundary rules
-      components/ hooks/ services/ types.ts
+      components/ services/ types.ts validations.ts logger.ts
   shared/                 # Cross-feature code (ask before modifying)
-  lib/                    # Project-wide utilities (logger, db, config)
+    components/           # sidebar, page-header, empty-state, pnl-badge, link-button
+    utils/                # formatCurrency, formatPercent, formatDate
+  lib/                    # Project-wide utilities
+    db/                   # Drizzle client + schema
+    logger.ts config.ts ids.ts errors.ts
+data/                     # SQLite database (gitignored)
 tests/                    # Mirrors src/ structure
   test-results/           # Test run output logs (gitignored)
 docs/                     # requirements/, decisions/, templates/
@@ -62,7 +58,13 @@ docs/                     # requirements/, decisions/, templates/
 - Every async op wrapped in try-catch with typed errors
 - Use project logger (`src/lib/logger.ts`), never bare `console.log`
 - File naming: kebab-case for files, PascalCase for components
-<!-- Add project-specific conventions below (fonts, colors, patterns) -->
+- Fonts: Geist Sans + Geist Mono (via next/font)
+- shadcn/ui uses Base UI (not Radix) — use `render` prop instead of `asChild`
+- Dates: stored as UTC ISO 8601 strings, displayed in local time on the client
+- IDs: nanoid(12) text primary keys
+- P&L: never stored, always computed at query time
+- Trade status: derived from exitDate presence (no stored column)
+- Server Actions for mutations, no API routes (Phase 1)
 
 ## Git Workflow
 - Branches: `feature/[short-desc]`, `fix/[short-desc]`
@@ -79,16 +81,9 @@ docs/                     # requirements/, decisions/, templates/
 - Full guide: `docs/parallel-development.md`
 
 ## Secret Patterns
-<!-- REQUIRED: Add patterns specific to your project's API keys -->
 ```
 SECRET_SCAN_PATTERNS="sk-\|AKIA\|ghp_\|Bearer \|password\s*="
 ```
-<!-- Examples to add per project:
-  Firebase: firebase.*apiKey
-  Google:   AIza
-  Tavily:   tvly-
-  Stripe:   sk_live_\|pk_live_
--->
 
 ---
 
@@ -112,7 +107,7 @@ grep -rn "$SECRET_SCAN_PATTERNS" --include="*.ts" --include="*.tsx" --include="*
 - Write tests DURING implementation, not after
 - Run before every commit and save results:
   ```bash
-  [pm] typecheck && [pm] lint && [pm] test 2>&1 | tee tests/test-results/$(date +%Y%m%d-%H%M%S).log
+  npm run typecheck && npm run lint && npm run test 2>&1 | tee tests/test-results/$(date +%Y%m%d-%H%M%S).log
   ```
 - Test result logs saved to `tests/test-results/` (add this directory to `.gitignore`)
 - Self-review checklist:

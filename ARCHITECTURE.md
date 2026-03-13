@@ -1,41 +1,49 @@
-# Architecture — [Project Name]
+# Architecture — Trading Journal
 
-> Last updated: 2026-03-12 | Updated by: Claude Code
+> Last updated: 2026-03-13 | Updated by: Claude Code
 
 ## System Overview
-[2-3 sentences: what this system does, who uses it, core value.]
+Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 1 (MVP — Stock Trade Logging).
 
 ## Architecture Diagram
 ```mermaid
 graph TB
     subgraph Client
-        UI[Frontend]
+        UI[Next.js App Router<br/>React 19 + Base UI]
     end
 
     subgraph Server
-        API[API Routes]
-        BL[Business Logic]
+        SA[Server Actions<br/>createTrade, updateTrade, deleteTrade]
+        SC[Server Components<br/>trades pages]
+        CALC[Calculations<br/>P&L, status derivation]
     end
 
-    subgraph External
-        DB[(Database)]
-        AI[AI Service]
+    subgraph Storage
+        DB[(SQLite<br/>better-sqlite3<br/>WAL mode)]
     end
 
-    UI -->|HTTP| API
-    API --> BL
-    BL --> DB
-    BL --> AI
+    UI -->|form action| SA
+    SC -->|queries| DB
+    SA -->|Drizzle ORM| DB
+    SC --> CALC
 ```
-> Update this diagram whenever system topology changes.
 
 ## Component Map
 
 | Component | Location | Responsibility | Dependencies |
 |-----------|----------|----------------|--------------|
-| _Example_ | `src/features/auth/` | _Login, signup, sessions_ | _Firebase Auth_ |
-
-> Add a row for every new component, service, or module.
+| TradeForm | `src/features/trades/components/trade-form.tsx` | Trade entry form (4 card sections) | Server action `createTrade`, shadcn/ui |
+| TradeList | `src/features/trades/components/trade-list.tsx` | Table of trades with P&L | PnlBadge, LinkButton |
+| TradeDetail | `src/features/trades/components/trade-detail.tsx` | Detail view with edit link and delete dialog | Server action `deleteTrade`, LinkButton |
+| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Trades active, others disabled) | lucide-react |
+| PageHeader | `src/shared/components/page-header.tsx` | Title + description + action slot | — |
+| EmptyState | `src/shared/components/empty-state.tsx` | Dashed border message + action | — |
+| PnlBadge | `src/shared/components/pnl-badge.tsx` | Green/red currency badge | formatCurrency |
+| LinkButton | `src/shared/components/link-button.tsx` | Next.js Link styled as button | buttonVariants |
+| Calculations | `src/features/trades/services/calculations.ts` | grossPnl, netPnl, rMultiple, holdingDays, deriveStatus | — |
+| Queries | `src/features/trades/services/queries.ts` | getTrades, getTradeById | Drizzle, calculations |
+| TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form pre-populated from existing trade | Server action `updateTrade`, shadcn/ui |
+| Actions | `src/features/trades/services/actions.ts` | createTrade, updateTrade, deleteTrade server actions | Drizzle, Zod validation |
 
 ## Data Model
 
@@ -43,59 +51,85 @@ graph TB
 
 | Entity | Storage | Key Fields | Relationships |
 |--------|---------|------------|---------------|
-| _Example: User_ | _`users` table_ | _id, email, name_ | _Has many Projects_ |
+| Trade | `trades` table | id, assetClass, ticker, direction, entryDate, entryPrice, positionSize, exitDate, exitPrice, commissions, fees | Has many ExitLegs (Phase 2) |
+| ExitLeg | `exit_legs` table | id, tradeId, exitDate, exitPrice, quantity, reason | Belongs to Trade |
 
 ### Schema Notes
-<!-- Non-obvious schema decisions, indexing, migrations -->
+- All IDs are nanoid(12) text primary keys
+- Dates stored as UTC ISO 8601 strings (`text` columns)
+- P&L is never stored — computed at query time from trade data
+- Trade status is derived: no exitDate = "open", has exitDate = "closed"
+- Phase 2+ columns on `trades` are nullable (options Greeks, crypto fields, psychology, etc.)
+- `exit_legs` table defined in schema but not wired in Phase 1
+- Using `drizzle-kit push` for Phase 1; will switch to `generate + migrate` before Phase 2
 
 ## API Endpoints
 
-| Method | Path | Description | Auth | Status |
-|--------|------|-------------|------|--------|
-| GET | `/api/health` | Health check | No | -- |
+Phase 1 uses Server Actions only — no API routes.
 
-> Add every new endpoint. Include auth requirements.
+| Type | Function | Description | Auth |
+|------|----------|-------------|------|
+| Server Action | `createTrade` | Validate FormData with Zod, insert trade | None |
+| Server Action | `updateTrade` | Validate FormData with Zod, update trade by ID | None |
+| Server Action | `deleteTrade` | Delete trade by ID, revalidate `/trades` | None |
+
+Future API routes (Phase 3+):
+- `GET /api/screenshots/[id]` — serve images from `data/screenshots/`
+- `GET /api/analytics/*` — chart data endpoints
+
+## Route Structure
+
+| Route | Type | Description |
+|-------|------|-------------|
+| `/` | Server | Redirects to `/trades` |
+| `/trades` | Server | Trade list with empty state |
+| `/trades/new` | Server | New trade form |
+| `/trades/[id]` | Server | Trade detail view |
+| `/trades/[id]/edit` | Server | Edit trade form |
+| `/trades/loading.tsx` | Client | Skeleton loading state |
+| `/trades/error.tsx` | Client | Error boundary with retry |
 
 ## External Integrations
 
-| Service | Purpose | Config | Rate Limits | Error Handling |
-|---------|---------|--------|-------------|----------------|
-| _Example_ | _AI responses_ | _`API_KEY` in .env.local_ | _1000/min_ | _Retry 3x backoff_ |
+None — fully local, no external services.
 
 ## Error Handling Strategy
 
 ### Error Flow
 ```
-Client Error  -> Error Boundary -> Logger -> User-friendly message
-API Error     -> try-catch -> Logger -> Consistent JSON error response
-Service Error -> try-catch -> Logger -> Retry (if applicable) -> Propagate
-```
-
-### API Error Response Format
-```json
-{ "error": { "code": "RESOURCE_NOT_FOUND", "message": "Human-readable description" } }
+Client Error  -> Error Boundary (error.tsx) -> Logger -> User-friendly message + retry
+Server Action -> try-catch -> Logger -> ActionState { success: false, message, errors }
+Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, ValidationError)
 ```
 
 ## Security
 
 ### Secret Management
-- All secrets in `.env.local` (never committed)
+- No secrets required (Phase 1 — local SQLite, no auth)
+- All secrets would go in `.env.local` (never committed)
 - `.env.example` maintained with placeholders
-- Server-side only — never in client bundle
 - Pre-commit scan (CLAUDE.md Rule 1)
 
 ### Input Validation
-<!-- Describe: zod, sanitization, parameterized queries, etc. -->
+- Zod schemas validate all form input (server-side via Server Actions)
+- Drizzle ORM provides parameterized queries (no SQL injection risk)
+- Ticker field auto-uppercased and length-limited
 
-### Deployment Security
-<!-- Env vars in hosting platform, HTTPS, build log verification -->
+## Key Patterns
+
+- **Computed P&L**: Never stored. Derived at query time via `enrichTradeWithCalculations()`.
+- **Derived status**: Computed from `exitDate` presence in `deriveStatus()`.
+- **Base UI render prop**: shadcn/ui uses Base UI. Use `render` prop (not `asChild`).
+- **LinkButton wrapper**: Solves server/client component boundary for Link + buttonVariants.
+- **UTC storage, local display**: Dates stored as UTC ISO 8601, formatted to local time on client.
+- **Server Actions only**: No API routes in Phase 1. Mutations via `useActionState` + form actions.
 
 ## Feature Log
 
 | Feature | Date | Key Decisions | Files Changed |
 |---------|------|---------------|---------------|
-| _Scaffolding_ | _YYYY-MM-DD_ | _Initial setup decisions_ | _Initial files_ |
-| Project Setup Decision System | 2026-03-12 | Decision guide as source of truth; skill automates it; no MCP templates (too project-specific); manual-first evals; layered brand docs | `docs/project-setup-guide.md`, `docs/skills-guide.md`, `docs/evals-guide.md`, `docs/brand-voice-guide.md`, `docs/templates/skill-template.md`, `docs/templates/eval-template/*`, `docs/templates/brand/*`, `.claude/commands/project-setup.md` |
+| Project Scaffold | 2026-03-12 | Next.js 15, SQLite/Drizzle, shadcn/ui Base UI, Vitest | Initial project files |
+| Phase 1: Trade CRUD MVP | 2026-03-12 | Server Actions (no API routes), computed P&L, derived status, nanoid(12) IDs, single exit (no exit_legs logic), LinkButton pattern for server/client boundary | `src/features/trades/`, `src/shared/`, `src/app/(app)/trades/`, `src/lib/`, tests |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
