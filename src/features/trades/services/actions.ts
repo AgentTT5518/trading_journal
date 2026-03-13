@@ -5,6 +5,7 @@ import { trades, exitLegs } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { generateId } from '@/lib/ids';
 import { tradeInsertSchema, exitLegInsertSchema } from '../validations';
+import { syncTradeTags } from '@/features/playbooks/services/actions';
 import { log } from '../logger';
 import type { ActionState } from '../types';
 import { revalidatePath } from 'next/cache';
@@ -131,6 +132,12 @@ export async function createTrade(
       updatedAt: now,
     });
 
+    // Sync tags from form
+    const tagIds = formData.getAll('tagIds').map(String).filter(Boolean);
+    if (tagIds.length > 0) {
+      await syncTradeTags(id, tagIds);
+    }
+
     log.info('Trade created', { tradeId: id, ticker: parsed.data.ticker });
     revalidatePath('/trades');
     return { success: true, data: { id } };
@@ -162,6 +169,10 @@ export async function updateTrade(
       .update(trades)
       .set({ ...parsed.data, updatedAt: now })
       .where(eq(trades.id, id));
+
+    // Sync tags from form
+    const tagIds = formData.getAll('tagIds').map(String).filter(Boolean);
+    await syncTradeTags(id, tagIds);
 
     log.info('Trade updated', { tradeId: id, ticker: parsed.data.ticker });
     revalidatePath('/trades');

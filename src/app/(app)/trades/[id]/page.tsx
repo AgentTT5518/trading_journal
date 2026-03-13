@@ -3,6 +3,7 @@ import { getTradeById } from '@/features/trades/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { TradeDetail } from '@/features/trades/components/trade-detail';
 import { LinkButton } from '@/shared/components/link-button';
+import { getTradeTagsForTrade } from '@/features/playbooks/services/queries';
 
 export default async function TradeDetailPage({
   params,
@@ -10,7 +11,10 @@ export default async function TradeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const trade = await getTradeById(id);
+  const [trade, tradeTags] = await Promise.all([
+    getTradeById(id),
+    getTradeTagsForTrade(id),
+  ]);
 
   if (!trade) {
     notFound();
@@ -27,7 +31,7 @@ export default async function TradeDetailPage({
           </LinkButton>
         }
       />
-      <TradeDetail trade={trade} />
+      <TradeDetail trade={trade} tradeTags={tradeTags} />
     </div>
   );
 }

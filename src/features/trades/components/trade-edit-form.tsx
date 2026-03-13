@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { updateTrade } from '../services/actions';
+import { TagSelector } from '@/features/playbooks/components/tag-selector';
+import type { Tag } from '@/features/playbooks/types';
 import type { ActionState, TradeWithCalculations } from '../types';
 
 /** Convert an ISO date string (or datetime-local string) to datetime-local input format */
@@ -34,7 +36,13 @@ const positionSizeLabel: Record<string, string> = {
   crypto: 'Quantity',
 };
 
-export function TradeEditForm({ trade }: { trade: TradeWithCalculations }) {
+interface TradeEditFormProps {
+  trade: TradeWithCalculations;
+  tags: Tag[];
+  selectedTagIds: string[];
+}
+
+export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProps) {
   const router = useRouter();
   const updateTradeWithId = updateTrade.bind(null, trade.id);
   const [state, formAction, isPending] = useActionState(updateTradeWithId, initialState);
@@ -59,6 +67,7 @@ export function TradeEditForm({ trade }: { trade: TradeWithCalculations }) {
           <TabsTrigger value="trade">Trade</TabsTrigger>
           <TabsTrigger value="context">Context</TabsTrigger>
           <TabsTrigger value="psychology">Psychology</TabsTrigger>
+          <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
         {/* ── Trade Tab ── */}
@@ -841,6 +850,17 @@ export function TradeEditForm({ trade }: { trade: TradeWithCalculations }) {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        {/* ── Tags Tab ── */}
+        <TabsContent value="tags" keepMounted>
+          <Card>
+            <CardHeader>
+              <CardTitle>Tags</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TagSelector tags={tags} selectedTagIds={selectedTagIds} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

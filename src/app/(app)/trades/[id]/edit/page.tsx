@@ -3,6 +3,8 @@ import { getTradeById } from '@/features/trades/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { TradeEditForm } from '@/features/trades/components/trade-edit-form';
 import { LinkButton } from '@/shared/components/link-button';
+import { getTags } from '@/features/playbooks/services/queries';
+import { getTagIdsForTrade } from '@/features/playbooks/services/queries';
 
 export default async function TradeEditPage({
   params,
@@ -10,7 +12,11 @@ export default async function TradeEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const trade = await getTradeById(id);
+  const [trade, tags, selectedTagIds] = await Promise.all([
+    getTradeById(id),
+    getTags(),
+    getTagIdsForTrade(id),
+  ]);
 
   if (!trade) {
     notFound();
@@ -27,7 +33,7 @@ export default async function TradeEditPage({
           </LinkButton>
         }
       />
-      <TradeEditForm trade={trade} />
+      <TradeEditForm trade={trade} tags={tags} selectedTagIds={selectedTagIds} />
     </div>
   );
 }

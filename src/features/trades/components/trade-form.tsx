@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createTrade } from '../services/actions';
+import { TagSelector } from '@/features/playbooks/components/tag-selector';
+import type { Tag } from '@/features/playbooks/types';
 import type { ActionState } from '../types';
 
 const initialState: ActionState<{ id: string }> = { success: false };
@@ -30,7 +32,11 @@ const positionSizeLabel: Record<AssetClass, string> = {
   crypto: 'Quantity',
 };
 
-export function TradeForm() {
+interface TradeFormProps {
+  tags: Tag[];
+}
+
+export function TradeForm({ tags }: TradeFormProps) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(createTrade, initialState);
   const [assetClass, setAssetClass] = useState<AssetClass>('stock');
@@ -51,6 +57,7 @@ export function TradeForm() {
           <TabsTrigger value="trade">Trade</TabsTrigger>
           <TabsTrigger value="context">Context</TabsTrigger>
           <TabsTrigger value="psychology">Psychology</TabsTrigger>
+          <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
         {/* ── Trade Tab ── */}
@@ -786,6 +793,17 @@ export function TradeForm() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        {/* ── Tags Tab ── */}
+        <TabsContent value="tags" keepMounted>
+          <Card>
+            <CardHeader>
+              <CardTitle>Tags</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TagSelector tags={tags} selectedTagIds={[]} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

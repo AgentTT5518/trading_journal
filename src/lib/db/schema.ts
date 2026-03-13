@@ -129,13 +129,52 @@ export const exitLegs = sqliteTable('exit_legs', {
 });
 
 // ============================================================
+// TAGS (Phase 7a)
+// ============================================================
+
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category', {
+    enum: [
+      'strategy',
+      'market_condition',
+      'timeframe',
+      'instrument',
+      'execution',
+      'mistake',
+    ],
+  }).notNull(),
+  isCustom: integer('is_custom', { mode: 'boolean' }).default(false).notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const tradeTags = sqliteTable('trade_tags', {
+  id: text('id').primaryKey(),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+  tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+});
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
 export const tradesRelations = relations(trades, ({ many }) => ({
   exitLegs: many(exitLegs),
+  tradeTags: many(tradeTags),
 }));
 
 export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
   trade: one(trades, { fields: [exitLegs.tradeId], references: [trades.id] }),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  tradeTags: many(tradeTags),
+}));
+
+export const tradeTagsRelations = relations(tradeTags, ({ one }) => ({
+  trade: one(trades, { fields: [tradeTags.tradeId], references: [trades.id] }),
+  tag: one(tags, { fields: [tradeTags.tagId], references: [tags.id] }),
 }));

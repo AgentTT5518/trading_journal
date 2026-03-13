@@ -5,13 +5,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Hoisted mocks (declared before vi.mock hoisting) ────────────────────────
-const { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany } = vi.hoisted(() => {
+const { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany, mockTransaction } = vi.hoisted(() => {
   const mockInsert = vi.fn();
   const mockDelete = vi.fn();
   const mockUpdate = vi.fn();
   const mockFindFirst = vi.fn();
   const mockFindMany = vi.fn();
-  return { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany };
+  const mockTransaction = vi.fn();
+  return { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany, mockTransaction };
 });
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ vi.mock('@/lib/db', () => ({
     insert: mockInsert,
     delete: mockDelete,
     update: mockUpdate,
+    transaction: mockTransaction,
     query: {
       trades: { findFirst: mockFindFirst },
       exitLegs: { findMany: mockFindMany },
@@ -240,6 +242,14 @@ describe('updateTrade', () => {
     vi.clearAllMocks();
     mockUpdate.mockReturnValue({
       set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    // syncTradeTags uses db.transaction — execute the callback with mock tx
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+      const mockTx = {
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+      };
+      await fn(mockTx);
     });
   });
 

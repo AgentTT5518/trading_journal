@@ -25,6 +25,9 @@ import {
 } from '@/shared/utils/formatting';
 import { deleteTrade } from '../services/actions';
 import { ExitLegsSection } from './exit-legs-section';
+import { TagBadge } from '@/features/playbooks/components/tag-badge';
+import type { TradeTagWithTag } from '@/features/playbooks/types';
+import type { TagCategory } from '@/features/playbooks/types';
 import type { TradeWithCalculations } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +51,12 @@ function StatusBadge({ status }: { status: 'open' | 'partial' | 'closed' }) {
   return <Badge variant="outline">Closed</Badge>;
 }
 
-export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
+interface TradeDetailProps {
+  trade: TradeWithCalculations;
+  tradeTags?: TradeTagWithTag[];
+}
+
+export function TradeDetail({ trade, tradeTags = [] }: TradeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -439,6 +447,26 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
                 <p className="whitespace-pre-wrap text-sm">{trade.lessonsLearned}</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tags */}
+      {tradeTags.length > 0 && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Tags</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {tradeTags.map((tt) => (
+                <TagBadge
+                  key={tt.id}
+                  name={tt.tag.name}
+                  category={tt.tag.category as TagCategory}
+                />
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
