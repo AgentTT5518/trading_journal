@@ -129,6 +129,22 @@ export const exitLegs = sqliteTable('exit_legs', {
 });
 
 // ============================================================
+// PLAYBOOKS (Phase 7b)
+// ============================================================
+
+export const playbooks = sqliteTable('playbooks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  entryRules: text('entry_rules'),
+  exitRules: text('exit_rules'),
+  marketConditions: text('market_conditions'),
+  positionSizingRules: text('position_sizing_rules'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ============================================================
 // TAGS (Phase 7a)
 // ============================================================
 
@@ -145,6 +161,7 @@ export const tags = sqliteTable('tags', {
       'mistake',
     ],
   }).notNull(),
+  playbookId: text('playbook_id').references(() => playbooks.id, { onDelete: 'set null' }),
   isCustom: integer('is_custom', { mode: 'boolean' }).default(false).notNull(),
   createdAt: text('created_at').notNull(),
 });
@@ -170,7 +187,12 @@ export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
   trade: one(trades, { fields: [exitLegs.tradeId], references: [trades.id] }),
 }));
 
-export const tagsRelations = relations(tags, ({ many }) => ({
+export const playbooksRelations = relations(playbooks, ({ many }) => ({
+  tags: many(tags),
+}));
+
+export const tagsRelations = relations(tags, ({ one, many }) => ({
+  playbook: one(playbooks, { fields: [tags.playbookId], references: [playbooks.id] }),
   tradeTags: many(tradeTags),
 }));
 

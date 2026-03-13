@@ -46,8 +46,8 @@ Tags and playbook management — predefined and custom tags grouped by category 
 - [ ] Requirements written
 - [ ] Architecture updated
 - [x] Implementation complete (Phase 7a: Tags)
-- [ ] Implementation complete (Phase 7b: Playbooks)
-- [ ] Tests passing
+- [x] Implementation complete (Phase 7b: Playbooks)
+- [x] Tests passing (184 tests, 9 files)
 - [ ] ARCHITECTURE.md Feature Log updated
 
 ## Cross-Boundary Edit Log
@@ -58,3 +58,6 @@ Tags and playbook management — predefined and custom tags grouped by category 
 | 2026-03-13 | `src/features/trades/` | Add TagSelector to forms, badges to detail, sync in actions | Plan pre-approved |
 | 2026-03-13 | `src/app/(app)/tags/` | New route for tag manager | Plan pre-approved |
 | 2026-03-13 | `package.json` | Add db:seed script | Plan pre-approved |
+| 2026-03-13 | `src/lib/db/schema.ts` | Added playbooks table + playbookId FK on tags + relations | Plan pre-approved |
+| 2026-03-13 | `src/shared/components/sidebar.tsx` | Enable Playbooks nav item | Plan pre-approved |
+| 2026-03-13 | `src/app/(app)/playbooks/` | New routes for playbook CRUD | Plan pre-approved |

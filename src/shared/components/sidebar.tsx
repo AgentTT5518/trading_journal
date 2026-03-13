@@ -8,7 +8,7 @@ const navItems = [
   { href: '/trades', label: 'Trades', enabled: true },
   { href: '/dashboard', label: 'Dashboard', enabled: false },
   { href: '/journal', label: 'Journal', enabled: false },
-  { href: '/playbook', label: 'Playbook', enabled: false },
+  { href: '/playbooks', label: 'Playbooks', enabled: true },
   { href: '/tags', label: 'Tags', enabled: true },
   { href: '/reviews', label: 'Reviews', enabled: false },
   { href: '/settings', label: 'Settings', enabled: false },
