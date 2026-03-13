@@ -190,6 +190,31 @@ export const screenshots = sqliteTable('screenshots', {
 });
 
 // ============================================================
+// REVIEWS (Phase 8)
+// ============================================================
+
+export const reviews = sqliteTable('reviews', {
+  id: text('id').primaryKey(),
+  type: text('type', { enum: ['daily', 'weekly', 'monthly'] }).notNull(),
+  startDate: text('start_date').notNull(),
+  endDate: text('end_date').notNull(),
+  grade: text('grade', { enum: ['A', 'B', 'C', 'D', 'F'] }),
+  notes: text('notes'),
+  lessonsLearned: text('lessons_learned'),
+  goalsForNext: text('goals_for_next'),
+  rulesFollowed: text('rules_followed'), // JSON array stored as text
+  rulesBroken: text('rules_broken'), // JSON array stored as text
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const reviewTrades = sqliteTable('review_trades', {
+  id: text('id').primaryKey(),
+  reviewId: text('review_id').notNull().references(() => reviews.id, { onDelete: 'cascade' }),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+});
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
@@ -197,6 +222,7 @@ export const tradesRelations = relations(trades, ({ many }) => ({
   exitLegs: many(exitLegs),
   tradeTags: many(tradeTags),
   screenshots: many(screenshots),
+  reviewTrades: many(reviewTrades),
 }));
 
 export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
@@ -219,4 +245,13 @@ export const tradeTagsRelations = relations(tradeTags, ({ one }) => ({
 
 export const screenshotsRelations = relations(screenshots, ({ one }) => ({
   trade: one(trades, { fields: [screenshots.tradeId], references: [trades.id] }),
+}));
+
+export const reviewsRelations = relations(reviews, ({ many }) => ({
+  reviewTrades: many(reviewTrades),
+}));
+
+export const reviewTradesRelations = relations(reviewTrades, ({ one }) => ({
+  review: one(reviews, { fields: [reviewTrades.reviewId], references: [reviews.id] }),
+  trade: one(trades, { fields: [reviewTrades.tradeId], references: [trades.id] }),
 }));

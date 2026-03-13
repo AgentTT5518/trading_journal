@@ -10,7 +10,7 @@ const navItems = [
   { href: '/journal', label: 'Journal', enabled: false },
   { href: '/playbooks', label: 'Playbooks', enabled: true },
   { href: '/tags', label: 'Tags', enabled: true },
-  { href: '/reviews', label: 'Reviews', enabled: false },
+  { href: '/reviews', label: 'Reviews', enabled: true },
   { href: '/settings', label: 'Settings', enabled: false },
 ];
 
