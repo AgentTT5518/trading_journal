@@ -24,6 +24,7 @@ import {
   formatPrice,
 } from '@/shared/utils/formatting';
 import { deleteTrade } from '../services/actions';
+import { ExitLegsSection } from './exit-legs-section';
 import type { TradeWithCalculations } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,17 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
       <span className="text-sm font-medium">{value}</span>
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: 'open' | 'partial' | 'closed' }) {
+  if (status === 'open') return <Badge variant="secondary">Open</Badge>;
+  if (status === 'partial')
+    return (
+      <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
+        Partial
+      </Badge>
+    );
+  return <Badge variant="outline">Closed</Badge>;
 }
 
 export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
@@ -53,6 +65,10 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
     }
   }
 
+  const isOption = trade.assetClass === 'option';
+  const isCrypto = trade.assetClass === 'crypto';
+  const usesExitLegs = trade.exitLegs.length > 0;
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Trade Info */}
@@ -60,9 +76,7 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Trade Info
-            <Badge variant={trade.status === 'open' ? 'secondary' : 'outline'}>
-              {trade.status === 'open' ? 'Open' : 'Closed'}
-            </Badge>
+            <StatusBadge status={trade.status} />
           </CardTitle>
         </CardHeader>
         <CardContent className="divide-y">
@@ -87,6 +101,12 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
           {trade.entryTrigger && (
             <DetailRow label="Entry Trigger" value={trade.entryTrigger} />
           )}
+          {trade.spreadId && (
+            <DetailRow
+              label="Spread"
+              value={`${trade.spreadType?.replace(/_/g, ' ') ?? 'Spread'} · ${trade.spreadId}`}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -97,10 +117,7 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
         </CardHeader>
         <CardContent className="divide-y">
           <DetailRow label="Gross P&L" value={formatCurrency(trade.grossPnl)} />
-          <DetailRow
-            label="Net P&L"
-            value={<PnlBadge value={trade.netPnl} />}
-          />
+          <DetailRow label="Net P&L" value={<PnlBadge value={trade.netPnl} />} />
           <DetailRow label="P&L %" value={formatPercent(trade.pnlPercent)} />
           <DetailRow
             label="R-Multiple"
@@ -110,37 +127,163 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
             label="Holding Days"
             value={trade.holdingDays != null ? `${trade.holdingDays} days` : '—'}
           />
+          {isOption && trade.dte != null && (
+            <DetailRow label="DTE at Entry" value={`${trade.dte}d`} />
+          )}
         </CardContent>
       </Card>
 
-      {/* Entry / Exit */}
+      {/* Entry */}
       <Card>
         <CardHeader>
           <CardTitle>Entry</CardTitle>
         </CardHeader>
         <CardContent className="divide-y">
           <DetailRow label="Date" value={formatDate(trade.entryDate)} />
-          <DetailRow label="Price" value={formatPrice(trade.entryPrice)} />
-          <DetailRow label="Size" value={trade.positionSize.toLocaleString()} />
+          <DetailRow
+            label={isOption ? 'Premium Paid' : 'Price'}
+            value={formatPrice(trade.entryPrice)}
+          />
+          <DetailRow
+            label={isOption ? 'Contracts' : 'Size'}
+            value={
+              isOption
+                ? (trade.contracts ?? trade.positionSize).toLocaleString()
+                : trade.positionSize.toLocaleString()
+            }
+          />
           <DetailRow
             label="Notional"
-            value={formatCurrency(trade.entryPrice * trade.positionSize)}
+            value={formatCurrency(
+              isOption
+                ? trade.entryPrice *
+                    (trade.contracts ?? trade.positionSize) *
+                    (trade.contractMultiplier ?? 100)
+                : trade.entryPrice * trade.positionSize
+            )}
           />
         </CardContent>
       </Card>
 
+      {/* Exit */}
       <Card>
         <CardHeader>
           <CardTitle>Exit</CardTitle>
         </CardHeader>
         <CardContent className="divide-y">
-          <DetailRow label="Date" value={formatDate(trade.exitDate)} />
-          <DetailRow label="Price" value={formatPrice(trade.exitPrice)} />
-          <DetailRow label="Reason" value={trade.exitReason?.replace(/_/g, ' ') ?? '—'} />
+          {!usesExitLegs ? (
+            <>
+              <DetailRow label="Date" value={formatDate(trade.exitDate)} />
+              <DetailRow
+                label={isOption ? 'Exit Premium' : 'Price'}
+                value={formatPrice(trade.exitPrice)}
+              />
+              <DetailRow label="Reason" value={trade.exitReason?.replace(/_/g, ' ') ?? '—'} />
+            </>
+          ) : (
+            <DetailRow label="Exit Type" value="Exit Legs (see below)" />
+          )}
           <DetailRow label="Commissions" value={formatCurrency(trade.commissions)} />
           <DetailRow label="Fees" value={formatCurrency(trade.fees)} />
         </CardContent>
       </Card>
+
+      {/* Options Info Card */}
+      {isOption && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Options Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+              <DetailRow
+                label="Option Type"
+                value={
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      trade.optionType === 'call'
+                        ? 'border-green-500/50 text-green-700 dark:text-green-400'
+                        : 'border-red-500/50 text-red-700 dark:text-red-400'
+                    )}
+                  >
+                    {trade.optionType?.toUpperCase() ?? '—'}
+                  </Badge>
+                }
+              />
+              <DetailRow
+                label="Strike"
+                value={trade.strike != null ? formatPrice(trade.strike) : '—'}
+              />
+              <DetailRow label="Expiry" value={trade.expiry ?? '—'} />
+              <DetailRow
+                label="Contracts"
+                value={trade.contracts != null ? trade.contracts.toLocaleString() : '—'}
+              />
+              <DetailRow label="Multiplier" value={trade.contractMultiplier ?? 100} />
+              {trade.dte != null && <DetailRow label="DTE at Entry" value={`${trade.dte}d`} />}
+              {trade.iv != null && (
+                <DetailRow label="IV at Entry" value={`${(trade.iv * 100).toFixed(1)}%`} />
+              )}
+              {trade.ivRank != null && (
+                <DetailRow label="IV Rank" value={`${trade.ivRank.toFixed(0)}`} />
+              )}
+              {trade.delta != null && (
+                <DetailRow label="Delta" value={trade.delta.toFixed(2)} />
+              )}
+              {trade.gamma != null && (
+                <DetailRow label="Gamma" value={trade.gamma.toFixed(3)} />
+              )}
+              {trade.theta != null && (
+                <DetailRow label="Theta" value={trade.theta.toFixed(2)} />
+              )}
+              {trade.vega != null && <DetailRow label="Vega" value={trade.vega.toFixed(2)} />}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Crypto Info Card */}
+      {isCrypto && (trade.exchange || trade.tradingPair || trade.leverage != null) && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Crypto Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+              {trade.exchange && <DetailRow label="Exchange" value={trade.exchange} />}
+              {trade.tradingPair && <DetailRow label="Trading Pair" value={trade.tradingPair} />}
+              {trade.leverage != null && (
+                <DetailRow label="Leverage" value={`${trade.leverage}×`} />
+              )}
+              {trade.liquidationPrice != null && (
+                <DetailRow
+                  label="Liquidation Price"
+                  value={formatPrice(trade.liquidationPrice)}
+                />
+              )}
+              {trade.makerFee != null && (
+                <DetailRow label="Maker Fee" value={formatCurrency(trade.makerFee)} />
+              )}
+              {trade.takerFee != null && (
+                <DetailRow label="Taker Fee" value={formatCurrency(trade.takerFee)} />
+              )}
+              {trade.networkFee != null && (
+                <DetailRow label="Network Fee" value={formatCurrency(trade.networkFee)} />
+              )}
+              {trade.fundingRate != null && (
+                <DetailRow label="Funding Rate" value={trade.fundingRate.toFixed(4)} />
+              )}
+              {trade.marketCapCategory && (
+                <DetailRow label="Market Cap" value={`${trade.marketCapCategory} cap`} />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Exit Legs Section */}
+      <ExitLegsSection trade={trade} />
 
       {/* Notes */}
       {trade.notes && (
@@ -158,26 +301,20 @@ export function TradeDetail({ trade }: { trade: TradeWithCalculations }) {
       <div className="flex gap-4 md:col-span-2">
         <LinkButton href={`/trades/${trade.id}/edit`}>Edit Trade</LinkButton>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger render={<Button variant="destructive" />}>
-            Delete Trade
-          </DialogTrigger>
+          <DialogTrigger render={<Button variant="destructive" />}>Delete Trade</DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete trade?</DialogTitle>
               <DialogDescription>
-                This will permanently delete the {trade.ticker}{' '}
-                {trade.direction} trade. This action cannot be undone.
+                This will permanently delete the {trade.ticker} {trade.direction} trade. This
+                action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
+              <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </Button>
             </DialogFooter>

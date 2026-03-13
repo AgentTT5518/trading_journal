@@ -45,10 +45,18 @@ Core trade logging — CRUD for trades, P&L calculations, trade list, form, and 
 - [x] Feature logger created
 - [x] Requirements written (`docs/requirements/trades.md`)
 - [x] Architecture updated (`ARCHITECTURE.md`)
-- [x] Implementation complete (Phase 1: CRUD + P&L)
-- [x] Tests passing (60 tests across 5 files)
+- [x] Implementation complete (Phase 1: CRUD + P&L — stock only)
+- [x] Implementation complete (Phase 2: Options, Crypto, Partial Exits)
+  - Options P&L with contractMultiplier, Greeks, expiry, DTE
+  - Crypto net P&L with exchange fees subtraction
+  - Exit legs wired (partial/closed status, per-leg P&L)
+  - Spread linking via spreadId (grouped in TradeList)
+  - Conditional form sections by asset class
+- [x] Tests passing (114 tests across 5 files)
 - [x] ARCHITECTURE.md Feature Log updated
 
 ## Cross-Boundary Edit Log
 | Date | File | Change | Approved By |
 |------|------|--------|-------------|
+| 2026-03-13 | `src/lib/db/schema.ts` | Added 17 options/spread columns to trades table | Plan pre-approved |
+| 2026-03-13 | `ARCHITECTURE.md` | Updated component map, data model, API endpoints, key patterns, feature log for Phase 2 | Plan pre-approved |

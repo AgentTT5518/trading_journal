@@ -5,11 +5,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Hoisted mocks (declared before vi.mock hoisting) ────────────────────────
-const { mockInsert, mockDelete, mockUpdate } = vi.hoisted(() => {
+const { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany } = vi.hoisted(() => {
   const mockInsert = vi.fn();
   const mockDelete = vi.fn();
   const mockUpdate = vi.fn();
-  return { mockInsert, mockDelete, mockUpdate };
+  const mockFindFirst = vi.fn();
+  const mockFindMany = vi.fn();
+  return { mockInsert, mockDelete, mockUpdate, mockFindFirst, mockFindMany };
 });
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
@@ -20,13 +22,23 @@ vi.mock('@/lib/db', () => ({
     insert: mockInsert,
     delete: mockDelete,
     update: mockUpdate,
+    query: {
+      trades: { findFirst: mockFindFirst },
+      exitLegs: { findMany: mockFindMany },
+    },
   },
 }));
 
 vi.mock('@/lib/ids', () => ({ generateId: () => 'test-id-12' }));
 
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
-import { createTrade, deleteTrade, updateTrade } from '@/features/trades/services/actions';
+import {
+  createTrade,
+  deleteTrade,
+  updateTrade,
+  addExitLeg,
+  deleteExitLeg,
+} from '@/features/trades/services/actions';
 import type { ActionState } from '@/features/trades/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -196,5 +208,80 @@ describe('deleteTrade', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toBe('Failed to delete trade');
+  });
+});
+
+// ─── addExitLeg ───────────────────────────────────────────────────────────────
+describe('addExitLeg', () => {
+  const initialLegState: ActionState<{ id: string }> = { success: false };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFindFirst.mockResolvedValue({ id: 'trade-abc', positionSize: 100 });
+    mockFindMany.mockResolvedValue([]);
+    mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('adds an exit leg with valid data', async () => {
+    const fd = makeFormData({
+      exitDate: '2026-01-20T15:00',
+      exitPrice: '160',
+      quantity: '50',
+    });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(true);
+    expect(result.data?.id).toBe('test-id-12');
+  });
+
+  it('returns validation error when exitPrice is missing', async () => {
+    const fd = makeFormData({ exitDate: '2026-01-20T15:00', quantity: '50' });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.exitPrice).toBeDefined();
+  });
+
+  it('rejects quantity exceeding remaining position', async () => {
+    mockFindMany.mockResolvedValue([{ quantity: 80 }]); // 80 already exited of 100
+    const fd = makeFormData({
+      exitDate: '2026-01-20T15:00',
+      exitPrice: '160',
+      quantity: '30', // only 20 remaining
+    });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.quantity).toBeDefined();
+  });
+
+  it('returns error when trade is not found', async () => {
+    mockFindFirst.mockResolvedValue(undefined);
+    const fd = makeFormData({
+      exitDate: '2026-01-20T15:00',
+      exitPrice: '160',
+      quantity: '50',
+    });
+    const result = await addExitLeg('nonexistent', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Trade not found');
+  });
+});
+
+// ─── deleteExitLeg ────────────────────────────────────────────────────────────
+describe('deleteExitLeg', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDelete.mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('deletes an exit leg and returns success', async () => {
+    const result = await deleteExitLeg('leg-xyz', 'trade-abc');
+    expect(result.success).toBe(true);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns error when DB throws', async () => {
+    mockDelete.mockReturnValue({ where: vi.fn().mockRejectedValue(new Error('DB error')) });
+    const result = await deleteExitLeg('leg-xyz', 'trade-abc');
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Failed to delete exit leg');
   });
 });
