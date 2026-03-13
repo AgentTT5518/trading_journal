@@ -198,6 +198,227 @@ describe('tradeInsertSchema — crypto validation', () => {
   });
 });
 
+describe('tradeInsertSchema — psychology validation', () => {
+  const validTrade = {
+    assetClass: 'stock' as const,
+    ticker: 'AAPL',
+    direction: 'long' as const,
+    entryDate: '2024-01-15T10:00',
+    entryPrice: 150.25,
+    positionSize: 100,
+  };
+
+  it('accepts valid psychology fields', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      preMood: 7,
+      preConfidence: 8,
+      fomoFlag: 'on',
+      revengeFlag: false,
+      anxietyDuring: 5,
+      urgeToExitEarly: 'true',
+      urgeToAdd: false,
+      executionSatisfaction: 9,
+      lessonsLearned: 'Should have waited for confirmation',
+      tradeGrade: 'B',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.preMood).toBe(7);
+      expect(result.data.preConfidence).toBe(8);
+      expect(result.data.fomoFlag).toBe(true);
+      expect(result.data.revengeFlag).toBe(false);
+      expect(result.data.urgeToExitEarly).toBe(true);
+      expect(result.data.tradeGrade).toBe('B');
+    }
+  });
+
+  it('allows omitting all psychology fields', () => {
+    const result = tradeInsertSchema.safeParse(validTrade);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects preMood below 1', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, preMood: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects preMood above 10', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, preMood: 11 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects preConfidence above 10', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, preConfidence: 15 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects anxietyDuring outside 1-10', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, anxietyDuring: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects executionSatisfaction above 10', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, executionSatisfaction: 11 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid trade grade', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, tradeGrade: 'X' });
+    expect(result.success).toBe(false);
+  });
+
+  it('coerces boolean flags from string "on"', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      fomoFlag: 'on',
+      revengeFlag: 'on',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fomoFlag).toBe(true);
+      expect(result.data.revengeFlag).toBe(true);
+    }
+  });
+
+  it('allows omitting boolean flags (optional)', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      fomoFlag: undefined,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fomoFlag).toBeUndefined();
+    }
+  });
+
+  it('coerces false value for boolean flags', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      fomoFlag: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fomoFlag).toBe(false);
+    }
+  });
+
+  it('accepts non-integer values for mood as failure', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, preMood: 7.5 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts all valid trade grades', () => {
+    for (const grade of ['A', 'B', 'C', 'D', 'F'] as const) {
+      const result = tradeInsertSchema.safeParse({ ...validTrade, tradeGrade: grade });
+      expect(result.success).toBe(true);
+    }
+  });
+});
+
+describe('tradeInsertSchema — market context & technicals', () => {
+  const validTrade = {
+    assetClass: 'stock' as const,
+    ticker: 'AAPL',
+    direction: 'long' as const,
+    entryDate: '2024-01-15T10:00',
+    entryPrice: 150.25,
+    positionSize: 100,
+  };
+
+  it('accepts valid swing context fields', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      plannedHoldDays: 5,
+      heldOverWeekend: 'on',
+      heldThroughEarnings: false,
+      heldThroughMacro: 'true',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.plannedHoldDays).toBe(5);
+      expect(result.data.heldOverWeekend).toBe(true);
+      expect(result.data.heldThroughEarnings).toBe(false);
+      expect(result.data.heldThroughMacro).toBe(true);
+    }
+  });
+
+  it('rejects plannedHoldDays of 0', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, plannedHoldDays: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid market context fields', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      weeklyTrend: 'up',
+      marketRegime: 'trending',
+      vixLevel: 20.5,
+      supportLevel: 145,
+      resistanceLevel: 160,
+      sectorPerformance: 'XLF up 2%',
+      upcomingCatalysts: 'FOMC next week',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid weeklyTrend enum', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, weeklyTrend: 'bullish' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid marketRegime enum', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, marketRegime: 'calm' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid technical indicator fields', () => {
+    const result = tradeInsertSchema.safeParse({
+      ...validTrade,
+      rsiAtEntry: 55,
+      macdAtEntry: 'histogram: 0.5, signal: 12.3',
+      distanceFrom50ma: 2.5,
+      distanceFrom200ma: -5.0,
+      volumeProfile: 'above_avg',
+      atrAtEntry: 3.5,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.distanceFrom200ma).toBe(-5.0);
+    }
+  });
+
+  it('rejects RSI above 100', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, rsiAtEntry: 101 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects RSI below 0', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, rsiAtEntry: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts negative distance from MA', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, distanceFrom50ma: -10 });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects negative ATR', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, atrAtEntry: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid volumeProfile enum', () => {
+    const result = tradeInsertSchema.safeParse({ ...validTrade, volumeProfile: 'high' });
+    expect(result.success).toBe(false);
+  });
+
+  it('allows omitting all context fields', () => {
+    const result = tradeInsertSchema.safeParse(validTrade);
+    expect(result.success).toBe(true);
+  });
+});
+
 describe('exitLegInsertSchema', () => {
   const validLeg = {
     exitDate: '2024-02-01T14:00',

@@ -14,6 +14,7 @@ function parseTradeFormData(raw: Record<string, FormDataEntryValue>) {
   const num = (key: string) => (raw[key] ? Number(raw[key]) : undefined);
   const str = (key: string) => raw[key] || undefined;
   const nullable = (key: string) => raw[key] || undefined;
+  const bool = (key: string) => raw[key] === 'on' || raw[key] === 'true' ? true : false;
 
   return {
     // Core
@@ -60,6 +61,37 @@ function parseTradeFormData(raw: Record<string, FormDataEntryValue>) {
     tokenType: nullable('tokenType'),
     btcDominance: raw.btcDominance ? Number(raw.btcDominance) : undefined,
     btcCorrelation: raw.btcCorrelation ? Number(raw.btcCorrelation) : undefined,
+    // Swing context (Phase 5)
+    plannedHoldDays: num('plannedHoldDays'),
+    heldOverWeekend: bool('heldOverWeekend'),
+    heldThroughEarnings: bool('heldThroughEarnings'),
+    heldThroughMacro: bool('heldThroughMacro'),
+    // Market context (Phase 5)
+    weeklyTrend: nullable('weeklyTrend'),
+    marketRegime: nullable('marketRegime'),
+    vixLevel: num('vixLevel'),
+    supportLevel: num('supportLevel'),
+    resistanceLevel: num('resistanceLevel'),
+    sectorPerformance: str('sectorPerformance'),
+    upcomingCatalysts: str('upcomingCatalysts'),
+    // Technical context (Phase 5)
+    rsiAtEntry: num('rsiAtEntry'),
+    macdAtEntry: str('macdAtEntry'),
+    distanceFrom50ma: num('distanceFrom50ma'),
+    distanceFrom200ma: num('distanceFrom200ma'),
+    volumeProfile: nullable('volumeProfile'),
+    atrAtEntry: num('atrAtEntry'),
+    // Psychology (Phase 4)
+    preMood: num('preMood'),
+    preConfidence: num('preConfidence'),
+    fomoFlag: bool('fomoFlag'),
+    revengeFlag: bool('revengeFlag'),
+    anxietyDuring: num('anxietyDuring'),
+    urgeToExitEarly: bool('urgeToExitEarly'),
+    urgeToAdd: bool('urgeToAdd'),
+    executionSatisfaction: num('executionSatisfaction'),
+    lessonsLearned: str('lessonsLearned'),
+    tradeGrade: nullable('tradeGrade'),
   };
 }
 
