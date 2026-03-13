@@ -1,36 +1,125 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Trading Journal
+
+A local-first swing trading journal for stocks, options, and crypto. Designed for solo traders who want structured trade logging, real-time P&L tracking, and performance analytics — all on localhost with no cloud dependency.
+
+## Features (Phase 1)
+
+- **Trade Logging** — Create, edit, and delete trades with entry/exit data
+- **P&L Computed at Query Time** — Gross P&L, net P&L, P&L %, holding days (never stored in DB)
+- **Open / Closed Status** — Derived from exit date presence; update a trade to close it
+- **Trade Detail View** — Full breakdown with P&L summary and entry/exit cards
+- **Asset Classes** — Stocks (Phase 1), Options & Crypto (Phase 2)
+
+## Tech Stack
+
+| Layer | Choice |
+|-------|--------|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript (strict) |
+| Styling | Tailwind CSS 4 + shadcn/ui (Base UI) |
+| Database | SQLite via Drizzle ORM + better-sqlite3 |
+| Validation | Zod v4 |
+| Testing | Vitest |
+| Package Manager | npm |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- npm 10+
+
+### Setup
 
 ```bash
+# Install dependencies
+npm install
+
+# Push schema to database (creates data/trading-journal.db)
+npm run db:push
+
+# Start dev server on port 5180
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:5180](http://localhost:5180) to use the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev          # Start dev server (port 5180)
+npm run build        # Production build
+npm run typecheck    # TypeScript type check
+npm run lint         # ESLint
+npm run test         # Run all tests (Vitest)
+npm run db:push      # Sync schema to SQLite (development)
+npm run db:studio    # Open Drizzle Studio (DB browser)
+```
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/                    # Next.js App Router pages
+    (app)/                # Shared sidebar layout
+      trades/             # Trade CRUD routes
+  components/ui/          # shadcn/ui primitives
+  features/
+    trades/               # Trade logging feature module
+      components/         # TradeForm, TradeEditForm, TradeList, TradeDetail
+      services/           # actions.ts, queries.ts, calculations.ts
+      types.ts / validations.ts / logger.ts
+  shared/
+    components/           # Sidebar, PageHeader, EmptyState, PnlBadge, LinkButton
+    utils/                # formatCurrency, formatPercent, formatDate
+  lib/
+    db/                   # Drizzle client + schema
+    logger.ts / ids.ts / errors.ts / config.ts
+data/                     # SQLite database (gitignored)
+tests/                    # Mirrors src/ structure
+docs/                     # Requirements, decisions, templates
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Design Decisions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **P&L is never stored** — always computed at query time from entry/exit prices and position size
+- **Trade status is derived** — `open` when `exitDate` is null, `closed` otherwise (no status column)
+- **Server Actions only** — No API routes in Phase 1; all mutations use Next.js Server Actions
+- **UTC storage, local display** — Dates stored as ISO 8601 strings, displayed in local timezone
+- **nanoid(12) IDs** — Short, URL-safe text primary keys
+- **Base UI (not Radix)** — shadcn/ui uses Base UI components; use `render` prop instead of `asChild`
 
-## Deploy on Vercel
+## Development Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Database
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The SQLite database lives at `data/trading-journal.db` (gitignored). Run `npm run db:push` after any schema changes in development. Switch to `drizzle-kit generate` + `migrate` before shipping to production.
+
+### Adding a Feature
+
+Follow the feature workflow in `CLAUDE.md`:
+1. Copy `docs/templates/FEATURE-CLAUDE.md` to `src/features/[name]/CLAUDE.md`
+2. Write requirements in `docs/requirements/[feature].md`
+3. Create a scoped logger: `src/features/[name]/logger.ts`
+4. Implement in `src/features/[name]/` — ask before touching shared code
+5. Write tests in `tests/features/[name]/`
+6. Update `ARCHITECTURE.md`
+
+### Running Tests
+
+```bash
+npm run test                    # Run all tests once
+npm run test:watch              # Watch mode
+npm run typecheck && npm run lint && npm run test  # Full pre-commit check
+```
+
+## Roadmap
+
+| Phase | Scope |
+|-------|-------|
+| **1 — Core** ✅ | Trade CRUD, computed P&L, open/closed status |
+| **2 — Risk** | Stop loss, R-multiple planning, options & crypto support |
+| **3 — Analytics** | Dashboard, equity curve, win rate, sector breakdowns |
+| **4 — Psychology** | Pre-trade mood/confidence, FOMO/revenge flags, execution grades |
+| **5 — Context** | Market regime, technical indicators at entry, catalyst tracking |
+| **6 — Screenshots** | Chart image uploads attached to trades |
