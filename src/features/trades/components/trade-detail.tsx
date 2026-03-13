@@ -26,8 +26,11 @@ import {
 import { deleteTrade } from '../services/actions';
 import { ExitLegsSection } from './exit-legs-section';
 import { TagBadge } from '@/features/playbooks/components/tag-badge';
+import { ScreenshotGallery } from '@/features/screenshots/components/screenshot-gallery';
+import { ScreenshotUpload } from '@/features/screenshots/components/screenshot-upload';
 import type { TradeTagWithTag } from '@/features/playbooks/types';
 import type { TagCategory } from '@/features/playbooks/types';
+import type { Screenshot } from '@/features/screenshots/types';
 import type { TradeWithCalculations } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -54,9 +57,10 @@ function StatusBadge({ status }: { status: 'open' | 'partial' | 'closed' }) {
 interface TradeDetailProps {
   trade: TradeWithCalculations;
   tradeTags?: TradeTagWithTag[];
+  screenshots?: Screenshot[];
 }
 
-export function TradeDetail({ trade, tradeTags = [] }: TradeDetailProps) {
+export function TradeDetail({ trade, tradeTags = [], screenshots = [] }: TradeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -470,6 +474,17 @@ export function TradeDetail({ trade, tradeTags = [] }: TradeDetailProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Screenshots */}
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Screenshots</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ScreenshotGallery screenshots={screenshots} tradeId={trade.id} />
+          <ScreenshotUpload tradeId={trade.id} />
+        </CardContent>
+      </Card>
 
       {/* Exit Legs Section */}
       <ExitLegsSection trade={trade} />

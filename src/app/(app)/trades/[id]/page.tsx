@@ -4,6 +4,7 @@ import { PageHeader } from '@/shared/components/page-header';
 import { TradeDetail } from '@/features/trades/components/trade-detail';
 import { LinkButton } from '@/shared/components/link-button';
 import { getTradeTagsForTrade } from '@/features/playbooks/services/queries';
+import { getScreenshotsForTrade } from '@/features/screenshots/services/queries';
 
 export default async function TradeDetailPage({
   params,
@@ -11,9 +12,10 @@ export default async function TradeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [trade, tradeTags] = await Promise.all([
+  const [trade, tradeTags, screenshots] = await Promise.all([
     getTradeById(id),
     getTradeTagsForTrade(id),
+    getScreenshotsForTrade(id),
   ]);
 
   if (!trade) {
@@ -31,7 +33,7 @@ export default async function TradeDetailPage({
           </LinkButton>
         }
       />
-      <TradeDetail trade={trade} tradeTags={tradeTags} />
+      <TradeDetail trade={trade} tradeTags={tradeTags} screenshots={screenshots} />
     </div>
   );
 }

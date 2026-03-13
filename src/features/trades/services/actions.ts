@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { generateId } from '@/lib/ids';
 import { tradeInsertSchema, exitLegInsertSchema } from '../validations';
 import { syncTradeTags } from '@/features/playbooks/services/actions';
+import { deleteTradeScreenshotDir } from '@/features/screenshots/services/storage';
 import { log } from '../logger';
 import type { ActionState } from '../types';
 import { revalidatePath } from 'next/cache';
@@ -187,6 +188,8 @@ export async function updateTrade(
 export async function deleteTrade(id: string): Promise<ActionState> {
   try {
     await db.delete(trades).where(eq(trades.id, id));
+    // Best-effort cleanup of screenshot files
+    await deleteTradeScreenshotDir(id);
     log.info('Trade deleted', { tradeId: id });
     revalidatePath('/trades');
     return { success: true };

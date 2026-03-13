@@ -175,12 +175,28 @@ export const tradeTags = sqliteTable('trade_tags', {
 });
 
 // ============================================================
+// SCREENSHOTS (Phase 6)
+// ============================================================
+
+export const screenshots = sqliteTable('screenshots', {
+  id: text('id').primaryKey(),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+  filename: text('filename').notNull(),
+  originalName: text('original_name').notNull(),
+  mimeType: text('mime_type').notNull(),
+  size: integer('size').notNull(),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+});
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
 export const tradesRelations = relations(trades, ({ many }) => ({
   exitLegs: many(exitLegs),
   tradeTags: many(tradeTags),
+  screenshots: many(screenshots),
 }));
 
 export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
@@ -199,4 +215,8 @@ export const tagsRelations = relations(tags, ({ one, many }) => ({
 export const tradeTagsRelations = relations(tradeTags, ({ one }) => ({
   trade: one(trades, { fields: [tradeTags.tradeId], references: [trades.id] }),
   tag: one(tags, { fields: [tradeTags.tagId], references: [tags.id] }),
+}));
+
+export const screenshotsRelations = relations(screenshots, ({ one }) => ({
+  trade: one(trades, { fields: [screenshots.tradeId], references: [trades.id] }),
 }));
