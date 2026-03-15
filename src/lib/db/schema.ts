@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, unique } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
 // ============================================================
@@ -215,6 +215,43 @@ export const reviewTrades = sqliteTable('review_trades', {
 });
 
 // ============================================================
+// JOURNAL (Journal Feature)
+// ============================================================
+
+export const journalEntries = sqliteTable('journal_entries', {
+  id: text('id').primaryKey(),
+  date: text('date').notNull(), // YYYY-MM-DD
+  category: text('category', {
+    enum: ['pre_market', 'post_market', 'intraday', 'general', 'lesson'],
+  }).notNull(),
+  title: text('title'),
+  content: text('content').notNull(),
+  mood: integer('mood'), // 1-5
+  energy: integer('energy'), // 1-5
+  marketSentiment: text('market_sentiment', {
+    enum: ['bullish', 'bearish', 'neutral', 'uncertain'],
+  }),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const journalTrades = sqliteTable(
+  'journal_trades',
+  {
+    id: text('id').primaryKey(),
+    journalEntryId: text('journal_entry_id')
+      .notNull()
+      .references(() => journalEntries.id, { onDelete: 'cascade' }),
+    tradeId: text('trade_id')
+      .notNull()
+      .references(() => trades.id, { onDelete: 'cascade' }),
+  },
+  (table) => ({
+    uniqJournalTrade: unique().on(table.journalEntryId, table.tradeId),
+  })
+);
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
@@ -223,6 +260,7 @@ export const tradesRelations = relations(trades, ({ many }) => ({
   tradeTags: many(tradeTags),
   screenshots: many(screenshots),
   reviewTrades: many(reviewTrades),
+  journalTrades: many(journalTrades),
 }));
 
 export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
@@ -254,4 +292,16 @@ export const reviewsRelations = relations(reviews, ({ many }) => ({
 export const reviewTradesRelations = relations(reviewTrades, ({ one }) => ({
   review: one(reviews, { fields: [reviewTrades.reviewId], references: [reviews.id] }),
   trade: one(trades, { fields: [reviewTrades.tradeId], references: [trades.id] }),
+}));
+
+export const journalEntriesRelations = relations(journalEntries, ({ many }) => ({
+  journalTrades: many(journalTrades),
+}));
+
+export const journalTradesRelations = relations(journalTrades, ({ one }) => ({
+  journalEntry: one(journalEntries, {
+    fields: [journalTrades.journalEntryId],
+    references: [journalEntries.id],
+  }),
+  trade: one(trades, { fields: [journalTrades.tradeId], references: [trades.id] }),
 }));

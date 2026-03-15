@@ -1,6 +1,6 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-13 (Phase 2) | Updated by: Claude Code
+> Last updated: 2026-03-15 (Journal Feature) | Updated by: Claude Code
 
 ## System Overview
 Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 2 (Options, Crypto & Partial Exits).
@@ -38,7 +38,13 @@ graph TB
 | ExitLegsSection | `src/features/trades/components/exit-legs-section.tsx` | Per-leg table with progress bar, add/edit/delete | ExitLegForm, server actions |
 | ExitLegForm | `src/features/trades/components/exit-leg-form.tsx` | Inline form for add/edit a single exit leg | `addExitLeg`, `updateExitLeg` |
 | TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form with conditional options/crypto sections | Server action `updateTrade`, shadcn/ui |
-| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Trades active, others disabled) | lucide-react |
+| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Trades, Journal, Playbooks, Tags, Reviews active) | lucide-react |
+| JournalList | `src/features/journal/components/journal-list.tsx` | Card list of entries with category badge, mood emoji, trade count | — |
+| JournalForm | `src/features/journal/components/journal-form.tsx` | Create form: Entry Info, Content, Psychology, Linked Trades | `createJournalEntry`, shadcn/ui |
+| JournalEditForm | `src/features/journal/components/journal-edit-form.tsx` | Edit form pre-populated with existing entry | `updateJournalEntry`, shadcn/ui |
+| JournalDetail | `src/features/journal/components/journal-detail.tsx` | Full entry view: content, psychology card, linked trades table, edit/delete | `deleteJournalEntry` |
+| JournalQueries | `src/features/journal/services/queries.ts` | getJournalEntries, getJournalEntryById, getTradesForDate | Drizzle |
+| JournalActions | `src/features/journal/services/actions.ts` | createJournalEntry, updateJournalEntry, deleteJournalEntry | Drizzle, Zod |
 | PageHeader | `src/shared/components/page-header.tsx` | Title + description + action slot | — |
 | EmptyState | `src/shared/components/empty-state.tsx` | Dashed border message + action | — |
 | PnlBadge | `src/shared/components/pnl-badge.tsx` | Green/red currency badge | formatCurrency |
@@ -53,8 +59,10 @@ graph TB
 
 | Entity | Storage | Key Fields | Relationships |
 |--------|---------|------------|---------------|
-| Trade | `trades` table | id, assetClass, ticker, direction, entryDate, entryPrice, positionSize, exitDate, exitPrice, commissions, fees, + options/crypto/spread columns | Has many ExitLegs |
+| Trade | `trades` table | id, assetClass, ticker, direction, entryDate, entryPrice, positionSize, exitDate, exitPrice, commissions, fees, + options/crypto/spread columns | Has many ExitLegs, JournalTrades |
 | ExitLeg | `exit_legs` table | id, tradeId, exitDate, exitPrice, quantity, exitReason, fees | Belongs to Trade (cascade delete) |
+| JournalEntry | `journal_entries` table | id, date (YYYY-MM-DD), category enum, title, content, mood (1-5), energy (1-5), marketSentiment enum, createdAt, updatedAt | Has many JournalTrades |
+| JournalTrade | `journal_trades` table | id, journalEntryId, tradeId — unique(journalEntryId, tradeId) | Belongs to JournalEntry + Trade (cascade delete) |
 
 ### Schema Notes
 - All IDs are nanoid(12) text primary keys
@@ -77,6 +85,9 @@ Server Actions only — no API routes.
 | Server Action | `createTrade` | Validate FormData (stock/option/crypto), insert trade | None |
 | Server Action | `updateTrade` | Validate FormData, update trade by ID | None |
 | Server Action | `deleteTrade` | Delete trade + cascade exit legs, revalidate `/trades` | None |
+| Server Action | `createJournalEntry` | Validate FormData, insert entry + trade links, revalidate `/journal` | None |
+| Server Action | `updateJournalEntry` | Validate FormData, update entry, re-link trades, revalidate paths | None |
+| Server Action | `deleteJournalEntry` | Delete entry + cascade journal_trades, revalidate `/journal` | None |
 | Server Action | `addExitLeg` | Validate FormData, validate quantity ≤ remaining, insert exit leg | None |
 | Server Action | `updateExitLeg` | Validate FormData, re-validate quantity, update exit leg | None |
 | Server Action | `deleteExitLeg` | Delete exit leg by ID, revalidate trade paths | None |
@@ -96,6 +107,12 @@ Future API routes (Phase 3+):
 | `/trades/[id]/edit` | Server | Edit trade form |
 | `/trades/loading.tsx` | Client | Skeleton loading state |
 | `/trades/error.tsx` | Client | Error boundary with retry |
+| `/journal` | Server | Journal entry list with empty state |
+| `/journal/new` | Server | New journal entry form |
+| `/journal/[id]` | Server | Journal entry detail view |
+| `/journal/[id]/edit` | Server | Edit journal entry form |
+| `/journal/loading.tsx` | Server | Skeleton loading state |
+| `/journal/error.tsx` | Client | Error boundary with retry |
 
 ## External Integrations
 
@@ -143,6 +160,7 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Project Scaffold | 2026-03-12 | Next.js 15, SQLite/Drizzle, shadcn/ui Base UI, Vitest | Initial project files |
 | Phase 1: Trade CRUD MVP | 2026-03-12 | Server Actions (no API routes), computed P&L, derived status, nanoid(12) IDs, single exit (no exit_legs logic), LinkButton pattern for server/client boundary | `src/features/trades/`, `src/shared/`, `src/app/(app)/trades/`, `src/lib/`, tests |
 | Phase 2: Options, Crypto & Partial Exits | 2026-03-13 | Options P&L (×contractMultiplier), crypto fee subtraction, exit legs wired (authoritative for P&L/status), partial status, spread linking by spreadId, conditional form sections per asset class, DTE computed not stored | `src/lib/db/schema.ts` (+17 cols), all files in `src/features/trades/`, 114 tests passing |
+| Journal Feature | 2026-03-15 | Free-form diary with 5 categories, mood/energy 1-5, market sentiment enum, optional trade linking via junction table (unique constraint). Multiple entries per day allowed, ordered by date+createdAt desc. No rich text — plain markdown content. | `src/features/journal/` (full feature), `src/lib/db/schema.ts` (+2 tables), `src/app/(app)/journal/` (6 routes), sidebar enabled. 48 tests passing (295 total) |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
