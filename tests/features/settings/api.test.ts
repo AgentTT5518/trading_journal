@@ -83,6 +83,34 @@ describe('GET /api/export/csv', () => {
     const res = await csvGET();
     expect(res.status).toBe(500);
   });
+
+  it('wraps values containing commas in double quotes (escape branch)', async () => {
+    mockSelect.mockReturnValue(makeSelectChain([
+      { ...sampleTrade, notes: 'Buy on dip, hold' },
+    ]));
+    const res = await csvGET();
+    const text = await res.text();
+    expect(text).toContain('"Buy on dip, hold"');
+  });
+
+  it('wraps values containing double quotes and escapes them (escape branch)', async () => {
+    mockSelect.mockReturnValue(makeSelectChain([
+      { ...sampleTrade, notes: 'She said "buy"' },
+    ]));
+    const res = await csvGET();
+    const text = await res.text();
+    // RFC 4180: embedded quotes are escaped by doubling
+    expect(text).toContain('"She said ""buy"""');
+  });
+
+  it('wraps values containing newlines in double quotes (escape branch)', async () => {
+    mockSelect.mockReturnValue(makeSelectChain([
+      { ...sampleTrade, notes: 'Line one\nLine two' },
+    ]));
+    const res = await csvGET();
+    const text = await res.text();
+    expect(text).toContain('"Line one\nLine two"');
+  });
 });
 
 // ─── JSON export ──────────────────────────────────────────────────────────────

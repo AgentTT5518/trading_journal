@@ -39,8 +39,10 @@ import {
   deleteTrade,
   updateTrade,
   addExitLeg,
+  updateExitLeg,
   deleteExitLeg,
 } from '@/features/trades/services/actions';
+import { tradeInsertSchema } from '@/features/trades/validations';
 import type { ActionState } from '@/features/trades/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -133,6 +135,119 @@ describe('createTrade', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toBe('An unexpected error occurred');
+  });
+
+  it('calls syncTradeTags when tagIds are provided', async () => {
+    mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+      await fn({
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) }),
+      });
+    });
+
+    const fd = makeFormData(validTradeFields);
+    fd.append('tagIds', 'tag-1');
+    fd.append('tagIds', 'tag-2');
+    const result = await createTrade(initialState, fd);
+
+    expect(result.success).toBe(true);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── createTrade without fees — covers :0 fallback branches ──────────────────
+describe('createTrade — no commissions or fees', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('uses 0 when commissions and fees are absent (lines 36-37: falsy :0 branches)', async () => {
+    // Covers raw.commissions ? ... : 0 and raw.fees ? ... : 0 — the :0 fallback branches
+    const fd = makeFormData({
+      assetClass: 'stock',
+      ticker: 'MSFT',
+      direction: 'long',
+      entryDate: '2026-01-15T09:30',
+      entryPrice: '300',
+      positionSize: '50',
+      orderType: 'market',
+      // commissions and fees intentionally omitted
+    });
+    const result = await createTrade(initialState, fd);
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── createTrade with all optional numeric fields ─────────────────────────────
+describe('createTrade — all optional numeric fields', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('parses option trade with all optional fields (covers truthy branches in parseTradeFormData)', async () => {
+    // Covers truthy branches for: exitPrice, exitReason, optionType, strike, expiry,
+    // contracts, contractMultiplier, delta, gamma, theta, vega, iv, ivRank,
+    // spreadId, spreadType, and bool('true') branch
+    const fd = makeFormData({
+      assetClass: 'option',
+      ticker: 'AAPL',
+      direction: 'long',
+      entryDate: '2026-01-15T09:30',
+      entryPrice: '2.00',
+      positionSize: '1',
+      orderType: 'limit',
+      exitDate: '2026-02-01T15:00',
+      exitPrice: '5.00',
+      exitReason: 'target_hit',
+      optionType: 'call',
+      strike: '150',
+      expiry: '2026-02-21',
+      contracts: '10',
+      contractMultiplier: '100',
+      delta: '0.50',
+      gamma: '0.01',
+      theta: '-0.05',
+      vega: '0.20',
+      iv: '0.30',
+      ivRank: '45',
+      spreadId: 'spread-1',
+      spreadType: 'vertical',
+      heldOverWeekend: 'true', // covers bool === 'true' branch (line 19)
+    });
+    const result = await createTrade(initialState, fd);
+    expect(result.success).toBe(true);
+  });
+
+  it('parses crypto trade with all optional fields (covers crypto truthy branches)', async () => {
+    // Covers truthy branches for: exchange, tradingPair, makerFee, takerFee,
+    // networkFee, fundingRate, leverage, liquidationPrice, marketCapCategory,
+    // tokenType, btcDominance, btcCorrelation
+    const fd = makeFormData({
+      assetClass: 'crypto',
+      ticker: 'BTC',
+      direction: 'long',
+      entryDate: '2026-01-15T09:30',
+      entryPrice: '50000',
+      positionSize: '0.1',
+      orderType: 'market',
+      exchange: 'Coinbase',
+      tradingPair: 'BTC/USDT',
+      makerFee: '5',
+      takerFee: '10',
+      networkFee: '2',
+      fundingRate: '0.0001',
+      leverage: '2',
+      liquidationPrice: '20000',
+      marketCapCategory: 'large',
+      tokenType: 'layer1',
+      btcDominance: '0.45',
+      btcCorrelation: '1',
+    });
+    const result = await createTrade(initialState, fd);
+    expect(result.success).toBe(true);
   });
 });
 
@@ -373,6 +488,157 @@ describe('addExitLeg', () => {
     expect(result.success).toBe(false);
     expect(result.message).toBe('Trade not found');
   });
+
+  it('returns generic error when DB insert throws', async () => {
+    mockInsert.mockReturnValue({
+      values: vi.fn().mockRejectedValue(new Error('DB constraint violation')),
+    });
+    const fd = makeFormData({
+      exitDate: '2026-01-20T15:00',
+      exitPrice: '160',
+      quantity: '50',
+    });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('An unexpected error occurred');
+  });
+
+  it('allows exactly filling the remaining position (remaining = 0)', async () => {
+    mockFindMany.mockResolvedValue([{ quantity: 50 }]); // 50 already exited of 100
+    const fd = makeFormData({
+      exitDate: '2026-01-20T15:00',
+      exitPrice: '160',
+      quantity: '50', // exactly 50 remaining
+    });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(true);
+  });
+
+  it('uses Number(fees) when fees is provided (line 216: truthy branch)', async () => {
+    // Covers raw.fees ? Number(raw.fees) : 0 truthy branch
+    const fd = makeFormData({
+      exitDate: '2026-01-20T15:00',
+      exitPrice: '160',
+      quantity: '50',
+      fees: '2.50',
+    });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(true);
+  });
+
+  it('returns validation error when exitDate is missing (line 212: undefined branch)', async () => {
+    // Covers raw.exitDate || undefined — the undefined right-side branch
+    const fd = makeFormData({ exitPrice: '160', quantity: '50' });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.exitDate).toBeDefined();
+  });
+
+  it('returns validation error when quantity is missing (line 214: undefined branch)', async () => {
+    // Covers raw.quantity ? Number(raw.quantity) : undefined — the undefined right-side branch
+    const fd = makeFormData({ exitDate: '2026-01-20T15:00', exitPrice: '160' });
+    const result = await addExitLeg('trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.quantity).toBeDefined();
+  });
+});
+
+// ─── updateExitLeg ────────────────────────────────────────────────────────────
+describe('updateExitLeg', () => {
+  const initialLegState: ActionState<{ id: string }> = { success: false };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFindFirst.mockResolvedValue({ id: 'trade-abc', positionSize: 100 });
+    // Current leg being edited (leg-xyz: 30) is included in findMany results
+    mockFindMany.mockResolvedValue([{ id: 'leg-xyz', quantity: 30 }]);
+    mockUpdate.mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+  });
+
+  it('updates an exit leg with valid data and returns the leg id', async () => {
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170', quantity: '40' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(true);
+    expect(result.data?.id).toBe('leg-xyz');
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns validation error when exitDate is missing', async () => {
+    const fd = makeFormData({ exitPrice: '170', quantity: '40' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.exitDate).toBeDefined();
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('returns error when trade is not found', async () => {
+    mockFindFirst.mockResolvedValue(undefined);
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170', quantity: '40' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('Trade not found');
+  });
+
+  it('excludes current leg when calculating remaining — rejects if new qty exceeds remaining', async () => {
+    // Trade: 100, other leg: 60, current leg: 30 → other total = 60, remaining = 40
+    mockFindMany.mockResolvedValue([
+      { id: 'leg-xyz', quantity: 30 },   // current leg (excluded)
+      { id: 'leg-other', quantity: 60 }, // other leg
+    ]);
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170', quantity: '45' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.quantity).toBeDefined();
+    expect(result.errors?.quantity[0]).toContain('40'); // remaining = 40
+  });
+
+  it('allows updating to exactly the remaining position', async () => {
+    // Trade: 100, other leg: 60 → remaining = 40
+    mockFindMany.mockResolvedValue([
+      { id: 'leg-xyz', quantity: 30 },
+      { id: 'leg-other', quantity: 60 },
+    ]);
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170', quantity: '40' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(true);
+  });
+
+  it('returns generic error when DB update throws', async () => {
+    mockUpdate.mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockRejectedValue(new Error('DB error')),
+      }),
+    });
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170', quantity: '30' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('An unexpected error occurred');
+  });
+
+  it('returns validation error when exitPrice is missing (line 278: undefined branch)', async () => {
+    // Covers raw.exitPrice ? Number(raw.exitPrice) : undefined — the undefined branch
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', quantity: '40' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.exitPrice).toBeDefined();
+  });
+
+  it('returns validation error when quantity is missing (line 279: undefined branch)', async () => {
+    // Covers raw.quantity ? Number(raw.quantity) : undefined — the undefined branch
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(false);
+    expect(result.errors?.quantity).toBeDefined();
+  });
+
+  it('uses Number(fees) when fees is provided (line 281: truthy branch)', async () => {
+    // Covers raw.fees ? Number(raw.fees) : 0 truthy branch in updateExitLeg
+    const fd = makeFormData({ exitDate: '2026-01-25T15:00', exitPrice: '170', quantity: '30', fees: '1.75' });
+    const result = await updateExitLeg('leg-xyz', 'trade-abc', initialLegState, fd);
+    expect(result.success).toBe(true);
+  });
 });
 
 // ─── deleteExitLeg ────────────────────────────────────────────────────────────
@@ -393,5 +659,25 @@ describe('deleteExitLeg', () => {
     const result = await deleteExitLeg('leg-xyz', 'trade-abc');
     expect(result.success).toBe(false);
     expect(result.message).toBe('Failed to delete exit leg');
+  });
+});
+
+// ─── collectFieldErrors — multiple errors for same field (line 104) ───────────
+describe('collectFieldErrors — multiple errors for the same field', () => {
+  it('accumulates multiple errors for the same field key in createTrade (line 104: else branch)', async () => {
+    const mockResult = { success: false, error: { issues: [
+      { path: ['ticker'], message: 'Ticker is required' },
+      { path: ['ticker'], message: 'Ticker must be uppercase' },
+    ] } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spy = vi.spyOn(tradeInsertSchema, 'safeParse').mockReturnValueOnce(mockResult as any);
+
+    const fd = makeFormData(validTradeFields);
+    const result = await createTrade(initialState, fd);
+
+    spy.mockRestore();
+    expect(result.success).toBe(false);
+    expect(Array.isArray(result.errors?.ticker)).toBe(true);
+    expect(result.errors?.ticker).toHaveLength(2);
   });
 });

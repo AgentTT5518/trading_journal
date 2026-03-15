@@ -9,6 +9,7 @@ import {
   calculateExitLegsPnl,
   calculateDte,
   getPositionMultiplier,
+  getEffectiveSize,
   enrichTradeWithCalculations,
 } from '@/features/trades/services/calculations';
 import type { Trade, ExitLeg } from '@/features/trades/types';
@@ -467,5 +468,64 @@ describe('enrichTradeWithCalculations — exit legs', () => {
     const enriched = enrichTradeWithCalculations(trade, legs);
     expect(enriched.status).toBe('partial');
     expect(enriched.totalExitedQuantity).toBe(60);
+  });
+});
+
+// ─── Branch coverage for null/edge cases ──────────────────────────────────────
+
+describe('getPositionMultiplier — null contractMultiplier fallback (line 7)', () => {
+  it('returns 100 when contractMultiplier is null for an option trade', () => {
+    // Covers the ?? 100 right-side branch
+    expect(getPositionMultiplier(makeTrade({ assetClass: 'option', contractMultiplier: null }))).toBe(100);
+  });
+});
+
+describe('getEffectiveSize', () => {
+  it('uses positionSize when contracts is null for an option trade (line 16)', () => {
+    // Covers the ?? trade.positionSize right-side branch
+    const trade = makeTrade({ assetClass: 'option', contracts: null, positionSize: 5, contractMultiplier: 100 });
+    expect(getEffectiveSize(trade)).toBe(500); // 5 * 100
+  });
+
+  it('uses contracts when provided for an option trade', () => {
+    const trade = makeTrade({ assetClass: 'option', contracts: 10, positionSize: 1, contractMultiplier: 100 });
+    expect(getEffectiveSize(trade)).toBe(1000); // 10 * 100
+  });
+
+  it('returns positionSize directly for stock trades', () => {
+    expect(getEffectiveSize(makeTrade({ assetClass: 'stock', positionSize: 100 }))).toBe(100);
+  });
+});
+
+describe('calculateExitLegsPnl — null fees fallback (line 70)', () => {
+  it('treats null leg fees as 0', () => {
+    // Covers the leg.fees ?? 0 right-side branch
+    const trade = makeTrade({ entryPrice: 100, direction: 'long', positionSize: 100 });
+    const legs = [makeExitLeg({ exitPrice: 110, quantity: 100, fees: null })];
+    expect(calculateExitLegsPnl(trade, legs)).toBe(1000); // (110-100)*100 - 0
+  });
+});
+
+describe('calculateNetPnl — null commissions/fees fallback (line 79)', () => {
+  it('treats null commissions and fees as 0', () => {
+    // Covers both ?? 0 right-side branches
+    const trade = makeTrade({ commissions: null, fees: null });
+    expect(calculateNetPnl(1000, trade)).toBe(1000);
+  });
+});
+
+describe('calculatePnlPercent — zero cost guard (line 90)', () => {
+  it('returns null when entry price is 0 (cost = 0)', () => {
+    // Covers the if (cost === 0) return null branch
+    const trade = makeTrade({ entryPrice: 0, positionSize: 100 });
+    expect(calculatePnlPercent(100, trade)).toBeNull();
+  });
+});
+
+describe('calculateRMultiple — zero dollar risk guard (line 98)', () => {
+  it('returns null when planned stop equals entry price (zero dollar risk)', () => {
+    // Covers the if (dollarRisk === 0) return null branch
+    const trade = makeTrade({ entryPrice: 100, plannedStopLoss: 100, positionSize: 100 });
+    expect(calculateRMultiple(1000, trade)).toBeNull();
   });
 });

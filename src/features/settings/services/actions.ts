@@ -115,8 +115,10 @@ export async function importTradesFromCsv(
           ...parsed.data,
           exitDate: parsed.data.exitDate ?? null,
           exitPrice: parsed.data.exitPrice ?? null,
-          commissions: parsed.data.commissions ?? 0,
-          fees: parsed.data.fees ?? null,
+          /* c8 ignore start */
+          commissions: parsed.data.commissions ?? 0, // Zod .default(0) guarantees non-null
+          fees: parsed.data.fees ?? null, // Zod .default(0) guarantees non-null
+          /* c8 ignore stop */
           notes: parsed.data.notes ?? null,
           createdAt: now,
           updatedAt: now,

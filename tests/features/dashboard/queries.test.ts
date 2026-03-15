@@ -5,7 +5,13 @@ vi.mock('@/lib/db', () => ({
   db: {},
 }));
 
-import { computeDashboardMetrics } from '@/features/dashboard/services/queries';
+// Mock getTrades so getDashboardData can be tested without a real DB
+const { mockGetTrades } = vi.hoisted(() => ({ mockGetTrades: vi.fn() }));
+vi.mock('@/features/trades/services/queries', () => ({
+  getTrades: mockGetTrades,
+}));
+
+import { computeDashboardMetrics, getDashboardData } from '@/features/dashboard/services/queries';
 import type { Trade, ExitLeg, TradeWithCalculations } from '@/features/trades/types';
 import { enrichTradeWithCalculations } from '@/features/trades/services/calculations';
 
@@ -335,6 +341,55 @@ describe('computeDashboardMetrics', () => {
       expect(result.equityCurve[1].date).toBe('2024-01-22T15:00:00.000Z');
       expect(result.equityCurve[1].cumulativePnl).toBe(1000);
     });
+
+    it('applies option multiplier for exit legs (line 82-84: option branch + ?? 100 fallback)', () => {
+      // Covers: trade.assetClass === 'option' true branch, contractMultiplier ?? 100, leg.fees ?? 0
+      const leg = makeExitLeg({
+        exitDate: '2024-01-20T15:00:00.000Z',
+        exitPrice: 5.0,
+        quantity: 10,
+        fees: null, // null → ?? 0 fallback (line 89)
+      });
+      const trade = makeEnrichedTrade(
+        {
+          assetClass: 'option',
+          entryPrice: 2.0,
+          direction: 'long',
+          positionSize: 1,
+          contracts: 10,
+          contractMultiplier: null, // null → ?? 100 fallback (line 83)
+          exitDate: null,
+          exitPrice: null,
+        },
+        [leg],
+      );
+      const result = computeDashboardMetrics([trade]);
+      // (5-2)*10*100 = 3000, fees null → 0
+      expect(result.equityCurve[0].cumulativePnl).toBe(3000);
+    });
+
+    it('applies short direction multiplier for exit legs (line 81: -1 branch)', () => {
+      // Covers direction === 'short' → dirMultiplier = -1
+      const leg = makeExitLeg({
+        exitDate: '2024-01-20T15:00:00.000Z',
+        exitPrice: 90,
+        quantity: 100,
+        fees: 0,
+      });
+      const trade = makeEnrichedTrade(
+        {
+          entryPrice: 100,
+          direction: 'short',
+          positionSize: 100,
+          exitDate: null,
+          exitPrice: null,
+        },
+        [leg],
+      );
+      const result = computeDashboardMetrics([trade]);
+      // short: (90 - 100) * 100 * 1 * -1 = 1000 profit
+      expect(result.equityCurve[0].cumulativePnl).toBe(1000);
+    });
   });
 
   describe('asset class breakdown', () => {
@@ -378,6 +433,18 @@ describe('computeDashboardMetrics', () => {
       const cryptoEntry = result.assetClassBreakdown.find((a) => a.assetClass === 'crypto')!;
       expect(cryptoEntry.tradeCount).toBe(1);
       expect(cryptoEntry.totalPnl).toBe(2500); // (45000-40000)*0.5 = 2500
+    });
+
+    it('accumulates P&L for two trades of the same asset class (line 113: non-null ?? branch)', () => {
+      // Covers groups.get(assetClass) returning an existing entry (non-null left side of ??)
+      const stock1 = makeEnrichedTrade({ id: 's1', assetClass: 'stock', exitPrice: 110, positionSize: 100 });
+      const stock2 = makeEnrichedTrade({ id: 's2', assetClass: 'stock', exitPrice: 120, positionSize: 50 });
+
+      const result = computeDashboardMetrics([stock1, stock2]);
+
+      const stockEntry = result.assetClassBreakdown.find((a) => a.assetClass === 'stock')!;
+      expect(stockEntry.tradeCount).toBe(2);
+      expect(stockEntry.totalPnl).toBe(2000); // 1000 + 1000
     });
   });
 
@@ -483,5 +550,21 @@ describe('computeDashboardMetrics', () => {
       expect(result.summary.totalTrades).toBe(1);
       expect(result.recentTrades[0].id).toBe('early');
     });
+  });
+});
+
+// ─── getDashboardData ─────────────────────────────────────────────────────────
+
+describe('getDashboardData', () => {
+  it('re-throws and logs error when getTrades fails', async () => {
+    mockGetTrades.mockRejectedValue(new Error('DB connection lost'));
+    await expect(getDashboardData()).rejects.toThrow('DB connection lost');
+  });
+
+  it('returns computed metrics when getTrades succeeds with empty data', async () => {
+    mockGetTrades.mockResolvedValue([]);
+    const result = await getDashboardData();
+    expect(result.summary.totalTrades).toBe(0);
+    expect(result.equityCurve).toEqual([]);
   });
 });
