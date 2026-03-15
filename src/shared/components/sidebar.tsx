@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/trades', label: 'Trades', enabled: true },
   { href: '/dashboard', label: 'Dashboard', enabled: false },
-  { href: '/journal', label: 'Journal', enabled: false },
+  { href: '/journal', label: 'Journal', enabled: true },
   { href: '/playbooks', label: 'Playbooks', enabled: true },
   { href: '/tags', label: 'Tags', enabled: true },
   { href: '/reviews', label: 'Reviews', enabled: true },
