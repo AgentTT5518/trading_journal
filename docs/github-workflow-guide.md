@@ -98,6 +98,8 @@ A step-by-step guide for developing features using Claude Code with git worktree
 - AI creates a PR from `feature/[name]` → `main` on GitHub
 - PR includes a summary of changes and a test checklist
 - You receive the PR link
+- CI runs automatically — typecheck, lint, test, and secret scan
+- Merge is blocked until all CI checks pass
 
 ---
 
