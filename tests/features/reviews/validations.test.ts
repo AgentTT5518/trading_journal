@@ -53,7 +53,7 @@ describe('reviewInsertSchema', () => {
 
   // Required fields
   it('fails when type is missing', () => {
-    const { type: _type, ...rest } = validReview;
+    const rest = Object.fromEntries(Object.entries(validReview).filter(([k]) => k !== 'type'));
     const result = reviewInsertSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });
