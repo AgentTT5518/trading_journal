@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock the db module to prevent SQLite from trying to open a real database
+vi.mock('@/lib/db', () => ({
+  db: {},
+}));
+
 import { computeDashboardMetrics } from '@/features/dashboard/services/queries';
 import type { Trade, ExitLeg, TradeWithCalculations } from '@/features/trades/types';
 import { enrichTradeWithCalculations } from '@/features/trades/services/calculations';
