@@ -1,6 +1,6 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-15 (Journal Feature) | Updated by: Claude Code
+> Last updated: 2026-03-15 (Dashboard Feature) | Updated by: Claude Code
 
 ## System Overview
 Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 2 (Options, Crypto & Partial Exits).
@@ -38,7 +38,14 @@ graph TB
 | ExitLegsSection | `src/features/trades/components/exit-legs-section.tsx` | Per-leg table with progress bar, add/edit/delete | ExitLegForm, server actions |
 | ExitLegForm | `src/features/trades/components/exit-leg-form.tsx` | Inline form for add/edit a single exit leg | `addExitLeg`, `updateExitLeg` |
 | TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form with conditional options/crypto sections | Server action `updateTrade`, shadcn/ui |
-| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Trades, Journal, Playbooks, Tags, Reviews active) | lucide-react |
+| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Dashboard, Trades, Journal, Playbooks, Tags, Reviews active) | lucide-react |
+| StatCard | `src/features/dashboard/components/stat-card.tsx` | Summary metric card with trend coloring | Card |
+| EquityCurve | `src/features/dashboard/components/equity-curve.tsx` | Recharts AreaChart — cumulative P&L over time | recharts |
+| AssetClassBreakdown | `src/features/dashboard/components/asset-class-breakdown.tsx` | Recharts BarChart — P&L by asset class | recharts |
+| WinLossChart | `src/features/dashboard/components/win-loss-chart.tsx` | Recharts PieChart — win/loss distribution | recharts |
+| RecentTradesTable | `src/features/dashboard/components/recent-trades-table.tsx` | Last 10 closed trades table | PnlBadge, Table |
+| DashboardCharts | `src/features/dashboard/components/dashboard-charts.tsx` | Client wrapper composing chart components | EquityCurve, AssetClassBreakdown, WinLossChart |
+| DashboardQueries | `src/features/dashboard/services/queries.ts` | getDashboardData, computeDashboardMetrics (pure) | getTrades from trades feature |
 | JournalList | `src/features/journal/components/journal-list.tsx` | Card list of entries with category badge, mood emoji, trade count | — |
 | JournalForm | `src/features/journal/components/journal-form.tsx` | Create form: Entry Info, Content, Psychology, Linked Trades | `createJournalEntry`, shadcn/ui |
 | JournalEditForm | `src/features/journal/components/journal-edit-form.tsx` | Edit form pre-populated with existing entry | `updateJournalEntry`, shadcn/ui |
@@ -101,6 +108,8 @@ Future API routes (Phase 3+):
 | Route | Type | Description |
 |-------|------|-------------|
 | `/` | Server | Redirects to `/trades` |
+| `/dashboard` | Server | Performance dashboard with charts |
+| `/dashboard/loading.tsx` | Server | Skeleton loading state |
 | `/trades` | Server | Trade list with empty state |
 | `/trades/new` | Server | New trade form |
 | `/trades/[id]` | Server | Trade detail view |
@@ -161,6 +170,7 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Phase 1: Trade CRUD MVP | 2026-03-12 | Server Actions (no API routes), computed P&L, derived status, nanoid(12) IDs, single exit (no exit_legs logic), LinkButton pattern for server/client boundary | `src/features/trades/`, `src/shared/`, `src/app/(app)/trades/`, `src/lib/`, tests |
 | Phase 2: Options, Crypto & Partial Exits | 2026-03-13 | Options P&L (×contractMultiplier), crypto fee subtraction, exit legs wired (authoritative for P&L/status), partial status, spread linking by spreadId, conditional form sections per asset class, DTE computed not stored | `src/lib/db/schema.ts` (+17 cols), all files in `src/features/trades/`, 114 tests passing |
 | Journal Feature | 2026-03-15 | Free-form diary with 5 categories, mood/energy 1-5, market sentiment enum, optional trade linking via junction table (unique constraint). Multiple entries per day allowed, ordered by date+createdAt desc. No rich text — plain markdown content. | `src/features/journal/` (full feature), `src/lib/db/schema.ts` (+2 tables), `src/app/(app)/journal/` (6 routes), sidebar enabled. 48 tests passing (295 total) |
+| Dashboard | 2026-03-15 | Recharts for charting, reuses getTrades() (no dedicated query), computeDashboardMetrics pure function for testability, per-exit-leg equity curve granularity, optional date range filter type for future use. Dashboard moved to first sidebar position. | `src/features/dashboard/` (full feature), `src/app/(app)/dashboard/` (page + loading), sidebar updated. 18 tests, 313 total |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
