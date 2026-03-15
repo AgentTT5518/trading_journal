@@ -26,7 +26,8 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/ids', () => ({ generateId: () => 'test-playbook-id' }));
 
 // ─── Imports ─────────────────────────────────────────────────────────────────
-import { createPlaybook, updatePlaybook, deletePlaybook } from '@/features/playbooks/services/actions';
+import { createPlaybook, updatePlaybook, deletePlaybook, createTag } from '@/features/playbooks/services/actions';
+import { playbookInsertSchema, tagInsertSchema } from '@/features/playbooks/validations';
 import type { ActionState } from '@/features/trades/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -188,5 +189,66 @@ describe('deletePlaybook', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toBe('Failed to delete playbook');
+  });
+});
+
+// ─── collectFieldErrors — multi-error branch ──────────────────────────────────
+// These tests cover the else branch of `if (!fieldErrors[key]) fieldErrors[key] = []`
+// by injecting two Zod issues for the same field path.
+
+describe('collectFieldErrors — multiple errors for the same field', () => {
+  // Inject two Zod issues with the same path to cover the else branch of
+  // `if (!fieldErrors[key]) fieldErrors[key] = []` inside collectFieldErrors.
+
+  it('createPlaybook accumulates multiple errors for the same field key', async () => {
+    const mockResult = { success: false, error: { issues: [
+      { path: ['name'], message: 'Name is required' },
+      { path: ['name'], message: 'Name must be at least 3 characters' },
+    ] } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spy = vi.spyOn(playbookInsertSchema, 'safeParse').mockReturnValueOnce(mockResult as any);
+
+    const fd = makeFormData({ name: '' });
+    const result = await createPlaybook(initialState, fd);
+
+    spy.mockRestore();
+    expect(result.success).toBe(false);
+    expect(Array.isArray(result.errors?.name)).toBe(true);
+    expect(result.errors?.name).toHaveLength(2);
+  });
+
+  it('updatePlaybook accumulates multiple errors for the same field key', async () => {
+    const mockResult = { success: false, error: { issues: [
+      { path: ['name'], message: 'Name is required' },
+      { path: ['name'], message: 'Name contains invalid characters' },
+    ] } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spy = vi.spyOn(playbookInsertSchema, 'safeParse').mockReturnValueOnce(mockResult as any);
+
+    const fd = makeFormData({ name: '' });
+    const result = await updatePlaybook('pb-1', initialState, fd);
+
+    spy.mockRestore();
+    expect(result.success).toBe(false);
+    expect(Array.isArray(result.errors?.name)).toBe(true);
+    expect(result.errors?.name).toHaveLength(2);
+  });
+
+  it('createTag accumulates multiple errors for the same field key (line 27)', async () => {
+    // Covers the else branch of `if (!errors[key]) errors[key] = []` inside createTag
+    const mockResult = { success: false, error: { issues: [
+      { path: ['name'], message: 'Name is required' },
+      { path: ['name'], message: 'Name must be at least 2 characters' },
+    ] } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spy = vi.spyOn(tagInsertSchema, 'safeParse').mockReturnValueOnce(mockResult as any);
+
+    const fd = makeFormData({ name: '' });
+    const result = await createTag(initialState, fd);
+
+    spy.mockRestore();
+    expect(result.success).toBe(false);
+    expect(Array.isArray(result.errors?.name)).toBe(true);
+    expect(result.errors?.name).toHaveLength(2);
   });
 });

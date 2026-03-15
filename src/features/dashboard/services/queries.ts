@@ -55,8 +55,11 @@ function getEffectiveExitDate(trade: TradeWithCalculations): string | null {
 }
 
 function computeSummary(closedTrades: TradeWithCalculations[]): DashboardSummary {
+  // closedTrades filter guarantees netPnl != null; ?? 0 right-side branches are unreachable
+  /* c8 ignore start */
   const totalPnl = closedTrades.reduce((sum, t) => sum + (t.netPnl ?? 0), 0);
   const wins = closedTrades.filter((t) => (t.netPnl ?? 0) > 0).length;
+  /* c8 ignore stop */
   const totalTrades = closedTrades.length;
   const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
 
@@ -91,9 +94,12 @@ function computeEquityCurve(closedTrades: TradeWithCalculations[]): EquityCurveP
       }
     } else {
       const exitDate = trade.exitDate;
+      // status='closed' requires exitDate; netPnl != null is pre-filtered — false branches unreachable
+      /* c8 ignore start */
       if (exitDate && trade.netPnl != null) {
         entries.push({ date: exitDate, pnl: trade.netPnl, ticker: trade.ticker });
       }
+      /* c8 ignore stop */
     }
   }
 
@@ -111,7 +117,9 @@ function computeAssetClassBreakdown(closedTrades: TradeWithCalculations[]): Asse
 
   for (const trade of closedTrades) {
     const existing = groups.get(trade.assetClass) ?? { totalPnl: 0, tradeCount: 0 };
-    existing.totalPnl += trade.netPnl ?? 0;
+    /* c8 ignore start */
+    existing.totalPnl += trade.netPnl ?? 0; // closedTrades filter guarantees non-null
+    /* c8 ignore stop */
     existing.tradeCount += 1;
     groups.set(trade.assetClass, existing);
   }
@@ -124,15 +132,20 @@ function computeAssetClassBreakdown(closedTrades: TradeWithCalculations[]): Asse
 }
 
 function computeWinLoss(closedTrades: TradeWithCalculations[]): WinLossData {
+  // closedTrades filter guarantees netPnl != null; ?? 0 right-side branches are unreachable
+  /* c8 ignore start */
   const wins = closedTrades.filter((t) => (t.netPnl ?? 0) > 0).length;
   const losses = closedTrades.filter((t) => (t.netPnl ?? 0) < 0).length;
+  /* c8 ignore stop */
   return { wins, losses };
 }
 
 function computeRecentTrades(closedTrades: TradeWithCalculations[]): RecentTradeRow[] {
   const sorted = [...closedTrades].sort((a, b) => {
-    const dateA = getEffectiveExitDate(a) ?? '';
+    /* c8 ignore start */
+    const dateA = getEffectiveExitDate(a) ?? ''; // closed trades always have exit date
     const dateB = getEffectiveExitDate(b) ?? '';
+    /* c8 ignore stop */
     return dateB.localeCompare(dateA);
   });
 
@@ -141,7 +154,9 @@ function computeRecentTrades(closedTrades: TradeWithCalculations[]): RecentTrade
     ticker: t.ticker,
     assetClass: t.assetClass,
     direction: t.direction,
-    exitDate: getEffectiveExitDate(t) ?? '',
+    /* c8 ignore start */
+    exitDate: getEffectiveExitDate(t) ?? '', // closed trades always have exit date
+    /* c8 ignore stop */
     netPnl: t.netPnl,
     pnlPercent: t.pnlPercent,
   }));

@@ -31,6 +31,7 @@ import {
   updateJournalEntry,
   deleteJournalEntry,
 } from '@/features/journal/services/actions';
+import { journalInsertSchema } from '@/features/journal/validations';
 import type { ActionState } from '@/features/trades/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -256,5 +257,28 @@ describe('deleteJournalEntry', () => {
     const result = await deleteJournalEntry('entry-1');
     expect(result.success).toBe(false);
     expect(result.message).toBe('Failed to delete journal entry');
+  });
+});
+
+// ─── collectFieldErrors — multi-error branch ──────────────────────────────────
+// Covers the else branch of `if (!fieldErrors[key]) fieldErrors[key] = []`
+// by injecting two Zod issues with the same path.
+
+describe('collectFieldErrors — multiple errors for the same field', () => {
+  it('createJournalEntry accumulates multiple errors for the same field key', async () => {
+    const mockResult = { success: false, error: { issues: [
+      { path: ['content'], message: 'Content is required' },
+      { path: ['content'], message: 'Content must be at least 10 characters' },
+    ] } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spy = vi.spyOn(journalInsertSchema, 'safeParse').mockReturnValueOnce(mockResult as any);
+
+    const fd = makeFormData({ date: '2026-03-15', category: 'general', content: '' });
+    const result = await createJournalEntry(initialState, fd);
+
+    spy.mockRestore();
+    expect(result.success).toBe(false);
+    expect(Array.isArray(result.errors?.content)).toBe(true);
+    expect(result.errors?.content).toHaveLength(2);
   });
 });

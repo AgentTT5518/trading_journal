@@ -29,6 +29,7 @@ vi.mock('@/lib/ids', () => ({ generateId: () => 'test-review-id' }));
 
 // ─── Imports ─────────────────────────────────────────────────────────────────
 import { createReview, updateReview, deleteReview } from '@/features/reviews/services/actions';
+import { reviewInsertSchema } from '@/features/reviews/validations';
 import type { ActionState } from '@/features/trades/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -193,6 +194,22 @@ describe('updateReview', () => {
     const result = await updateReview('review-1', initialState, fd);
     expect(result.success).toBe(false);
   });
+
+  it('returns error on database failure', async () => {
+    mockUpdate.mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockRejectedValue(new Error('DB error')),
+      }),
+    });
+    const fd = makeFormData({
+      type: 'weekly',
+      startDate: '2026-03-01',
+      endDate: '2026-03-07',
+    });
+    const result = await updateReview('review-1', initialState, fd);
+    expect(result.success).toBe(false);
+    expect(result.message).toBe('An unexpected error occurred');
+  });
 });
 
 // ─── deleteReview ────────────────────────────────────────────────────────────
@@ -215,5 +232,49 @@ describe('deleteReview', () => {
     const result = await deleteReview('review-1');
     expect(result.success).toBe(false);
     expect(result.message).toBe('Failed to delete review');
+  });
+});
+
+// ─── updateReview — rulesFollowed/rulesBroken truthy branches (lines 115-116) ──
+describe('updateReview — rulesFollowed and rulesBroken truthy branches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdate.mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    mockDelete.mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+  });
+
+  it('JSON-stringifies rulesFollowed and rulesBroken when provided', async () => {
+    // Covers lines 115-116: the truthy branch of rulesFollowed ? JSON.stringify(...) : null
+    const fd = makeFormData({
+      type: 'weekly',
+      startDate: '2026-03-01',
+      endDate: '2026-03-07',
+      rulesFollowed: JSON.stringify(['Cut losses early', 'Follow the plan']),
+      rulesBroken: JSON.stringify(['Chased a trade']),
+    });
+    const result = await updateReview('review-1', initialState, fd);
+    expect(result.success).toBe(true);
+  });
+});
+
+// ─── collectFieldErrors — multiple errors for the same field (line 16) ────────
+describe('collectFieldErrors — multiple errors for the same field', () => {
+  it('accumulates multiple errors for the same field key', async () => {
+    const mockResult = { success: false, error: { issues: [
+      { path: ['type'], message: 'Type is required' },
+      { path: ['type'], message: 'Type must be daily, weekly, or monthly' },
+    ] } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spy = vi.spyOn(reviewInsertSchema, 'safeParse').mockReturnValueOnce(mockResult as any);
+
+    const fd = makeFormData({ type: '', startDate: '2026-03-01', endDate: '2026-03-07' });
+    const result = await createReview(initialState, fd);
+
+    spy.mockRestore();
+    expect(result.success).toBe(false);
+    expect(Array.isArray(result.errors?.type)).toBe(true);
+    expect(result.errors?.type).toHaveLength(2);
   });
 });

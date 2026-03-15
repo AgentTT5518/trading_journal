@@ -7,6 +7,18 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    coverage: {
+      provider: 'v8',
+      exclude: [
+        'src/lib/db/schema.ts', // Drizzle schema: relations() and $defaultFn callbacks are framework-invoked only
+      ],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
+      },
+    },
   },
   resolve: {
     alias: {
