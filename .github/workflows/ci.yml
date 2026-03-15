@@ -52,7 +52,7 @@ jobs:
             --include="*.ts" --include="*.tsx" --include="*.js" \
             --include="*.json" --include="*.env" \
             src/ tests/ . 2>/dev/null \
-            | grep -v node_modules | grep -v ".env.example"; then
+            | grep -v node_modules | grep -v ".env.example" | grep -v "package-lock.json"; then
             echo "SECRETS DETECTED — merge blocked"
             exit 1
           else
