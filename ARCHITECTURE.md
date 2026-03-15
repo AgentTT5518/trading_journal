@@ -1,6 +1,6 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-15 (Dashboard Feature) | Updated by: Claude Code
+> Last updated: 2026-03-15 (Settings Feature) | Updated by: Claude Code
 
 ## System Overview
 Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 2 (Options, Crypto & Partial Exits).
@@ -38,7 +38,14 @@ graph TB
 | ExitLegsSection | `src/features/trades/components/exit-legs-section.tsx` | Per-leg table with progress bar, add/edit/delete | ExitLegForm, server actions |
 | ExitLegForm | `src/features/trades/components/exit-leg-form.tsx` | Inline form for add/edit a single exit leg | `addExitLeg`, `updateExitLeg` |
 | TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form with conditional options/crypto sections | Server action `updateTrade`, shadcn/ui |
-| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Dashboard, Trades, Journal, Playbooks, Tags, Reviews active) | lucide-react |
+| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Dashboard, Trades, Journal, Playbooks, Tags, Reviews, Settings active) | lucide-react |
+| SettingsTabs | `src/features/settings/components/settings-tabs.tsx` | Tabs compositor: Profile, Trade Defaults, Display, Data Management | ProfileForm, TradeDefaultsForm, DisplayPreferencesForm, DataManagement |
+| ProfileForm | `src/features/settings/components/profile-form.tsx` | Trader name, timezone, currency, startingCapital | `updateSettings`, shadcn/ui |
+| TradeDefaultsForm | `src/features/settings/components/trade-defaults-form.tsx` | Commission, risk %, position sizing method | `updateSettings`, shadcn/ui |
+| DisplayPreferencesForm | `src/features/settings/components/display-preferences-form.tsx` | Date format + theme; calls `setTheme()` on save | `updateSettings`, next-themes |
+| DataManagement | `src/features/settings/components/data-management.tsx` | Export CSV/JSON links, CSV import with error report, Clear All Trades dialog | `importTradesFromCsv`, `clearAllTrades` |
+| SettingsQueries | `src/features/settings/services/queries.ts` | `getSettings()` with hardcoded fallback default | Drizzle |
+| SettingsActions | `src/features/settings/services/actions.ts` | `updateSettings` (upsert), `importTradesFromCsv` (partial), `clearAllTrades` | Drizzle, Zod |
 | StatCard | `src/features/dashboard/components/stat-card.tsx` | Summary metric card with trend coloring | Card |
 | EquityCurve | `src/features/dashboard/components/equity-curve.tsx` | Recharts AreaChart — cumulative P&L over time | recharts |
 | AssetClassBreakdown | `src/features/dashboard/components/asset-class-breakdown.tsx` | Recharts BarChart — P&L by asset class | recharts |
@@ -70,6 +77,7 @@ graph TB
 | ExitLeg | `exit_legs` table | id, tradeId, exitDate, exitPrice, quantity, exitReason, fees | Belongs to Trade (cascade delete) |
 | JournalEntry | `journal_entries` table | id, date (YYYY-MM-DD), category enum, title, content, mood (1-5), energy (1-5), marketSentiment enum, createdAt, updatedAt | Has many JournalTrades |
 | JournalTrade | `journal_trades` table | id, journalEntryId, tradeId — unique(journalEntryId, tradeId) | Belongs to JournalEntry + Trade (cascade delete) |
+| Settings | `settings` table | id='default' (single row), traderName, timezone, currency, startingCapital (nullable), defaultCommission, defaultRiskPercent, positionSizingMethod enum, dateFormat, theme enum, createdAt, updatedAt | Standalone — no FK relations |
 
 ### Schema Notes
 - All IDs are nanoid(12) text primary keys
@@ -85,10 +93,10 @@ graph TB
 
 ## API Endpoints
 
-Server Actions only — no API routes.
+Server Actions for mutations; GET API routes for file downloads.
 
-| Type | Function | Description | Auth |
-|------|----------|-------------|------|
+| Type | Function/Route | Description | Auth |
+|------|---------------|-------------|------|
 | Server Action | `createTrade` | Validate FormData (stock/option/crypto), insert trade | None |
 | Server Action | `updateTrade` | Validate FormData, update trade by ID | None |
 | Server Action | `deleteTrade` | Delete trade + cascade exit legs, revalidate `/trades` | None |
@@ -98,6 +106,11 @@ Server Actions only — no API routes.
 | Server Action | `addExitLeg` | Validate FormData, validate quantity ≤ remaining, insert exit leg | None |
 | Server Action | `updateExitLeg` | Validate FormData, re-validate quantity, update exit leg | None |
 | Server Action | `deleteExitLeg` | Delete exit leg by ID, revalidate trade paths | None |
+| Server Action | `updateSettings` | Upsert settings row (`id='default'`), validate with Zod | None |
+| Server Action | `importTradesFromCsv` | Parse CSV FormData, validate each row, partial insert + error report | None |
+| Server Action | `clearAllTrades` | Require confirmation='DELETE', delete all trades | None |
+| GET Route | `/api/export/csv` | Stream all trades as CSV with Content-Disposition | None |
+| GET Route | `/api/export/json` | Stream all trades as JSON with Content-Disposition | None |
 
 Future API routes (Phase 3+):
 - `GET /api/screenshots/[id]` — serve images from `data/screenshots/`
@@ -122,6 +135,8 @@ Future API routes (Phase 3+):
 | `/journal/[id]/edit` | Server | Edit journal entry form |
 | `/journal/loading.tsx` | Server | Skeleton loading state |
 | `/journal/error.tsx` | Client | Error boundary with retry |
+| `/settings` | Server | Settings page with 4-tab layout |
+| `/settings/loading.tsx` | Server | Skeleton loading state |
 
 ## External Integrations
 
@@ -171,6 +186,7 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Phase 2: Options, Crypto & Partial Exits | 2026-03-13 | Options P&L (×contractMultiplier), crypto fee subtraction, exit legs wired (authoritative for P&L/status), partial status, spread linking by spreadId, conditional form sections per asset class, DTE computed not stored | `src/lib/db/schema.ts` (+17 cols), all files in `src/features/trades/`, 114 tests passing |
 | Journal Feature | 2026-03-15 | Free-form diary with 5 categories, mood/energy 1-5, market sentiment enum, optional trade linking via junction table (unique constraint). Multiple entries per day allowed, ordered by date+createdAt desc. No rich text — plain markdown content. | `src/features/journal/` (full feature), `src/lib/db/schema.ts` (+2 tables), `src/app/(app)/journal/` (6 routes), sidebar enabled. 48 tests passing (295 total) |
 | Dashboard | 2026-03-15 | Recharts for charting, reuses getTrades() (no dedicated query), computeDashboardMetrics pure function for testability, per-exit-leg equity curve granularity, optional date range filter type for future use. Dashboard moved to first sidebar position. | `src/features/dashboard/` (full feature), `src/app/(app)/dashboard/` (page + loading), sidebar updated. 18 tests, 313 total |
+| Settings | 2026-03-15 | Single-row SQLite settings table (`id='default'`), upsert via one Server Action with all fields, theme applies client-side via next-themes after confirmed save, CSV export via GET routes (needed for Content-Disposition), CSV import is partial (row-level errors reported), Clear All Trades requires typing DELETE, startingCapital is nullable (0 is valid), dateFormat stored but not yet wired to formatDate (known limitation). | `src/features/settings/` (full feature), `src/lib/db/schema.ts` (+1 table), `src/app/(app)/settings/` (2 files), `src/app/api/export/csv+json/`, `src/app/layout.tsx` (ThemeProvider), sidebar Settings enabled. 44 tests, 357 total |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
