@@ -48,6 +48,9 @@ data/                     # SQLite database (gitignored)
 tests/                    # Mirrors src/ structure
   test-results/           # Test run output logs (gitignored)
 docs/                     # requirements/, decisions/, templates/
+Plan/
+  Planning/               # Active plans (working drafts during planning)
+  Archive/                # Completed plans (moved here after development)
 ```
 
 ## Code Conventions
@@ -158,12 +161,18 @@ grep -rn "$SECRET_SCAN_PATTERNS" --include="*.ts" --include="*.tsx" --include="*
 ```
 1. BOUNDARY  -> Copy docs/templates/FEATURE-CLAUDE.md to src/features/[name]/CLAUDE.md
               -> Replace [FEATURE_NAME] with actual name, fill in Owner + Description
-2. PLAN      -> /plan mode -> write docs/requirements/[feature].md
-3. DESIGN    -> Update ARCHITECTURE.md with planned changes
-4. BUILD     -> Implement + tests + logger (ask before cross-boundary edits)
-5. REVIEW    -> Secret scan + tests + self-review checklist
-6. DOCUMENT  -> Update ARCHITECTURE.md Feature Log
-7. COMMIT    -> Conventional commit -> push feature branch -> PR
+2. PLAN      -> Create Plan/Planning/[feature]/ folder
+              -> Copy docs/templates/plan-template.md -> plan.md
+              -> Fill in goal, approach, file list, open questions
+3. REVIEW    -> User reviews plan, adds feedback / asks questions
+4. APPROVE   -> User gives go-ahead to implement
+5. DESIGN    -> Update ARCHITECTURE.md with planned changes
+6. BUILD     -> Implement + tests + logger (ask before cross-boundary edits)
+7. TEST      -> Secret scan + tests + self-review checklist
+8. COMPLETE  -> Finalize docs/requirements/[feature].md and docs/decisions/
+              -> Update ARCHITECTURE.md Feature Log
+              -> Move plan from Plan/Planning/ to Plan/Archive/
+9. COMMIT    -> Conventional commit -> push feature branch -> PR
 ```
 
 ## Reference Docs
@@ -181,4 +190,8 @@ grep -rn "$SECRET_SCAN_PATTERNS" --include="*.ts" --include="*.tsx" --include="*
 - `docs/templates/eval-template/` — Eval test structure starter (rubric + test cases)
 - `docs/templates/brand/` — Brand identity, style guide, and tone matrix templates
 - `docs/parallel-development.md` — Multi-developer worktree workflow
+- `docs/command-policy.md` — Command permission tiers for Claude Code operations
+- `docs/templates/plan-template.md` — Plan file template
+- `Plan/Planning/` — Active feature plans (working drafts)
+- `Plan/Archive/` — Completed feature plans
 - `.claude/commands/project-setup.md` — Interactive project setup skill (`/project-setup`)
