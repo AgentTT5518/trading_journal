@@ -252,6 +252,25 @@ export const journalTrades = sqliteTable(
 );
 
 // ============================================================
+// SETTINGS (Settings Feature)
+// ============================================================
+
+export const settings = sqliteTable('settings', {
+  id: text('id').primaryKey().$defaultFn(() => 'default'),
+  traderName: text('trader_name').notNull().default(''),
+  timezone: text('timezone').notNull().default('America/New_York'),
+  currency: text('currency').notNull().default('USD'),
+  startingCapital: real('starting_capital'), // null = unset; avoids misleading P&L with default 0
+  defaultCommission: real('default_commission').notNull().default(0),
+  defaultRiskPercent: real('default_risk_percent').notNull().default(1),
+  positionSizingMethod: text('position_sizing_method').notNull().default('fixed-dollar'),
+  dateFormat: text('date_format').notNull().default('MM/DD/YYYY'),
+  theme: text('theme').notNull().default('system'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+// ============================================================
 // RELATIONS
 // ============================================================
 
