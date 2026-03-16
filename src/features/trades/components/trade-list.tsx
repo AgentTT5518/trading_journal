@@ -33,7 +33,7 @@ function StatusBadge({ status }: { status: 'open' | 'partial' | 'closed' }) {
   return <Badge variant="outline">Closed</Badge>;
 }
 
-function TradeRow({ trade, indent = false }: { trade: TradeWithCalculations; indent?: boolean }) {
+function TradeRow({ trade, indent = false, dateFormat }: { trade: TradeWithCalculations; indent?: boolean; dateFormat?: string }) {
   const ac = assetClassBadge[trade.assetClass] ?? assetClassBadge.stock;
   return (
     <TableRow className="cursor-pointer">
@@ -67,7 +67,7 @@ function TradeRow({ trade, indent = false }: { trade: TradeWithCalculations; ind
           </Badge>
         </div>
       </TableCell>
-      <TableCell>{formatDate(trade.entryDate)}</TableCell>
+      <TableCell>{formatDate(trade.entryDate, dateFormat)}</TableCell>
       <TableCell className="text-right font-mono">{formatPrice(trade.entryPrice)}</TableCell>
       <TableCell className="text-right font-mono">{formatPrice(trade.exitPrice)}</TableCell>
       <TableCell className="text-right">
@@ -80,7 +80,7 @@ function TradeRow({ trade, indent = false }: { trade: TradeWithCalculations; ind
   );
 }
 
-export function TradeList({ trades }: { trades: TradeWithCalculations[] }) {
+export function TradeList({ trades, dateFormat }: { trades: TradeWithCalculations[]; dateFormat?: string }) {
   // Partition into ungrouped trades and spread groups
   const spreadGroups = new Map<string, TradeWithCalculations[]>();
   const ungrouped: TradeWithCalculations[] = [];
@@ -135,7 +135,7 @@ export function TradeList({ trades }: { trades: TradeWithCalculations[] }) {
         <TableBody>
           {entries.map((entry) => {
             if (entry.type === 'trade') {
-              return <TradeRow key={entry.trade.id} trade={entry.trade} />;
+              return <TradeRow key={entry.trade.id} trade={entry.trade} dateFormat={dateFormat} />;
             }
 
             // Spread group
@@ -171,7 +171,7 @@ export function TradeList({ trades }: { trades: TradeWithCalculations[] }) {
                 </TableCell>
               </TableRow>,
               // Individual leg rows
-              ...legs.map((leg) => <TradeRow key={leg.id} trade={leg} indent />),
+              ...legs.map((leg) => <TradeRow key={leg.id} trade={leg} indent dateFormat={dateFormat} />),
             ];
           })}
         </TableBody>

@@ -22,9 +22,10 @@ const ASSET_LABELS: Record<string, string> = {
 
 type RecentTradesTableProps = {
   trades: RecentTradeRow[];
+  dateFormat?: string;
 };
 
-export function RecentTradesTable({ trades }: RecentTradesTableProps) {
+export function RecentTradesTable({ trades, dateFormat }: RecentTradesTableProps) {
   if (trades.length === 0) {
     return (
       <p className="py-4 text-center text-muted-foreground">No closed trades yet</p>
@@ -71,7 +72,7 @@ export function RecentTradesTable({ trades }: RecentTradesTableProps) {
                 {trade.direction.toUpperCase()}
               </Badge>
             </TableCell>
-            <TableCell>{formatDate(trade.exitDate)}</TableCell>
+            <TableCell>{formatDate(trade.exitDate, dateFormat)}</TableCell>
             <TableCell className="text-right">
               <PnlBadge value={trade.netPnl} />
             </TableCell>

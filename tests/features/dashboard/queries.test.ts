@@ -11,7 +11,7 @@ vi.mock('@/features/trades/services/queries', () => ({
   getTrades: mockGetTrades,
 }));
 
-import { computeDashboardMetrics, getDashboardData } from '@/features/dashboard/services/queries';
+import { computeDashboardMetrics, computeRMultipleStats, getDashboardData } from '@/features/dashboard/services/queries';
 import type { Trade, ExitLeg, TradeWithCalculations } from '@/features/trades/types';
 import { enrichTradeWithCalculations } from '@/features/trades/services/calculations';
 
@@ -550,6 +550,121 @@ describe('computeDashboardMetrics', () => {
       expect(result.summary.totalTrades).toBe(1);
       expect(result.recentTrades[0].id).toBe('early');
     });
+  });
+
+  describe('rMultipleStats', () => {
+    it('returns rMultipleStats in dashboard metrics', () => {
+      const trade = makeEnrichedTrade({
+        exitPrice: 110,
+        plannedStopLoss: 90,
+      });
+
+      const result = computeDashboardMetrics([trade]);
+
+      expect(result.rMultipleStats).toBeDefined();
+      expect(result.rMultipleStats.totalWithR).toBe(1);
+    });
+  });
+});
+
+describe('computeRMultipleStats', () => {
+  it('returns empty stats for trades without R-multiple', () => {
+    const t1 = makeEnrichedTrade({ exitPrice: 110, plannedStopLoss: null });
+
+    const result = computeRMultipleStats([t1]);
+
+    expect(result.totalWithR).toBe(0);
+    expect(result.expectancy).toBeNull();
+    expect(result.avgWinR).toBeNull();
+    expect(result.avgLossR).toBeNull();
+    expect(result.distribution).toHaveLength(8);
+  });
+
+  it('computes expectancy for mixed wins/losses', () => {
+    // Winner: buy 100 @ 100, sell @ 120, stop @ 90 → R = 2000/1000 = 2.0
+    const winner = makeEnrichedTrade({
+      id: 'win',
+      entryPrice: 100,
+      exitPrice: 120,
+      positionSize: 100,
+      plannedStopLoss: 90,
+    });
+    // Loser: buy 100 @ 100, sell @ 95, stop @ 90 → R = -500/1000 = -0.5
+    const loser = makeEnrichedTrade({
+      id: 'loss',
+      entryPrice: 100,
+      exitPrice: 95,
+      positionSize: 100,
+      plannedStopLoss: 90,
+    });
+
+    const result = computeRMultipleStats([winner, loser]);
+
+    expect(result.totalWithR).toBe(2);
+    expect(result.avgWinR).toBeCloseTo(2.0, 2);
+    expect(result.avgLossR).toBeCloseTo(0.5, 2);
+    // expectancy = (0.5 * 2.0) - (0.5 * 0.5) = 1.0 - 0.25 = 0.75
+    expect(result.expectancy).toBeCloseTo(0.75, 2);
+  });
+
+  it('distributes R-multiples into correct buckets', () => {
+    // R = 2.0 → "1 to 2R" bucket (since r > 1 && r <= 2)
+    // Actually R = 2.0 exactly, so r > 1 && r <= 2 → true for "1 to 2R"
+    const trade = makeEnrichedTrade({
+      entryPrice: 100,
+      exitPrice: 120,
+      positionSize: 100,
+      plannedStopLoss: 90,
+    });
+
+    const result = computeRMultipleStats([trade]);
+    const bucket = result.distribution.find((b) => b.range === '1 to 2R');
+
+    expect(bucket).toBeDefined();
+    expect(bucket!.count).toBe(1);
+    expect(bucket!.isPositive).toBe(true);
+  });
+
+  it('handles all winners correctly', () => {
+    const t1 = makeEnrichedTrade({
+      id: 't1',
+      entryPrice: 100,
+      exitPrice: 110,
+      positionSize: 100,
+      plannedStopLoss: 90,
+    });
+
+    const result = computeRMultipleStats([t1]);
+
+    expect(result.avgLossR).toBeNull();
+    expect(result.avgWinR).not.toBeNull();
+    // expectancy = (1.0 * avgWinR) - (0 * 0) = avgWinR
+    expect(result.expectancy).toBeCloseTo(result.avgWinR!, 4);
+  });
+
+  it('handles all losers correctly', () => {
+    const t1 = makeEnrichedTrade({
+      id: 't1',
+      entryPrice: 100,
+      exitPrice: 90,
+      positionSize: 100,
+      plannedStopLoss: 90,
+    });
+
+    const result = computeRMultipleStats([t1]);
+
+    expect(result.avgWinR).toBeNull();
+    expect(result.avgLossR).not.toBeNull();
+    // expectancy = (0 * 0) - (1.0 * avgLossR) = -avgLossR
+    expect(result.expectancy).toBeCloseTo(-result.avgLossR!, 4);
+  });
+
+  it('handles empty trades array', () => {
+    const result = computeRMultipleStats([]);
+
+    expect(result.totalWithR).toBe(0);
+    expect(result.expectancy).toBeNull();
+    expect(result.distribution.every((b) => b.count === 0)).toBe(true);
   });
 });
 

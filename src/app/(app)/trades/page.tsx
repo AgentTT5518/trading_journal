@@ -1,11 +1,12 @@
 import { getTrades } from '@/features/trades/services/queries';
+import { getSettings } from '@/features/settings/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
 import { TradeList } from '@/features/trades/components/trade-list';
 
 export default async function TradesPage() {
-  const trades = await getTrades();
+  const [trades, settings] = await Promise.all([getTrades(), getSettings()]);
 
   return (
     <div className="space-y-6">
@@ -23,7 +24,7 @@ export default async function TradesPage() {
           }
         />
       ) : (
-        <TradeList trades={trades} />
+        <TradeList trades={trades} dateFormat={settings.dateFormat} />
       )}
     </div>
   );

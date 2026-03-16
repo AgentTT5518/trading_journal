@@ -4,18 +4,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EquityCurve } from './equity-curve';
 import { AssetClassBreakdown } from './asset-class-breakdown';
 import { WinLossChart } from './win-loss-chart';
-import type { EquityCurvePoint, AssetClassPnl, WinLossData } from '../types';
+import { RMultipleDistribution } from './r-multiple-distribution';
+import type { EquityCurvePoint, AssetClassPnl, WinLossData, RMultipleBucket } from '../types';
 
 type DashboardChartsProps = {
   equityCurve: EquityCurvePoint[];
   assetClassBreakdown: AssetClassPnl[];
   winLoss: WinLossData;
+  rMultipleDistribution: RMultipleBucket[];
+  dateFormat?: string;
 };
 
 export function DashboardCharts({
   equityCurve,
   assetClassBreakdown,
   winLoss,
+  rMultipleDistribution,
+  dateFormat,
 }: DashboardChartsProps) {
   return (
     <div className="space-y-4">
@@ -24,7 +29,7 @@ export function DashboardCharts({
           <CardTitle>Equity Curve</CardTitle>
         </CardHeader>
         <CardContent>
-          <EquityCurve data={equityCurve} />
+          <EquityCurve data={equityCurve} dateFormat={dateFormat} />
         </CardContent>
       </Card>
 
@@ -47,6 +52,15 @@ export function DashboardCharts({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>R-Multiple Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RMultipleDistribution data={rMultipleDistribution} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

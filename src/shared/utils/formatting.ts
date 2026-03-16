@@ -11,13 +11,21 @@ export function formatPercent(value: number | null): string {
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
-export function formatDate(isoString: string | null): string {
+export function formatDate(isoString: string | null, dateFormat?: string): string {
   if (!isoString) return '—';
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const d = new Date(isoString);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  switch (dateFormat) {
+    case 'DD/MM/YYYY':
+      return `${dd}/${mm}/${yyyy}`;
+    case 'YYYY-MM-DD':
+      return `${yyyy}-${mm}-${dd}`;
+    case 'MM/DD/YYYY':
+    default:
+      return `${mm}/${dd}/${yyyy}`;
+  }
 }
 
 export function formatPrice(value: number | null): string {
