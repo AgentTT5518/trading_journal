@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils';
 type StatCardProps = {
   title: string;
   value: string;
+  subtitle?: string;
   trend?: 'positive' | 'negative' | 'neutral';
 };
 
-export function StatCard({ title, value, trend = 'neutral' }: StatCardProps) {
+export function StatCard({ title, value, subtitle, trend = 'neutral' }: StatCardProps) {
   return (
     <Card size="sm">
       <CardHeader>
@@ -25,6 +26,9 @@ export function StatCard({ title, value, trend = 'neutral' }: StatCardProps) {
         >
           {value}
         </p>
+        {subtitle && (
+          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+        )}
       </CardContent>
     </Card>
   );

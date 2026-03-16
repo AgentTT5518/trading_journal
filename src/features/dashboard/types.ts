@@ -3,6 +3,10 @@ export type DashboardSummary = {
   winRate: number;
   totalTrades: number;
   avgRMultiple: number | null;
+  profitFactor: number | null;
+  maxDrawdown: number;
+  avgWin: number | null;
+  avgLoss: number | null;
 };
 
 export type EquityCurvePoint = {

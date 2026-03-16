@@ -1,9 +1,9 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-15 (Settings Feature) | Updated by: Claude Code
+> Last updated: 2026-03-16 (Enhancements V2) | Updated by: Claude Code
 
 ## System Overview
-Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, and will expand to psychology tracking, strategy playbooks, analytics, and structured reviews across 8 phases. Currently in Phase 2 (Options, Crypto & Partial Exits).
+Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, psychology, analytics, and structured reviews. All core features are complete: Trades (stock/option/crypto with partial exits), Dashboard (with date range filtering and advanced metrics), Journal, Playbooks, Tags, Reviews, Screenshots, and Settings.
 
 ## Architecture Diagram
 ```mermaid
@@ -34,11 +34,13 @@ graph TB
 |-----------|----------|----------------|--------------|
 | TradeForm | `src/features/trades/components/trade-form.tsx` | Trade entry form with asset class switching (stock/option/crypto) | Server action `createTrade`, shadcn/ui |
 | TradeList | `src/features/trades/components/trade-list.tsx` | Table of trades with P&L; spread grouping; partial/open/closed status | PnlBadge, LinkButton |
+| FilterableTradeList | `src/features/trades/components/filterable-trade-list.tsx` | Client wrapper: combines TradeFilters + TradeList with filtered state | TradeFilters, TradeList |
+| TradeFilters | `src/features/trades/components/trade-filters.tsx` | Search by ticker + filter by status (open/closed/partial) + filter by asset class | lucide-react (Search icon) |
 | TradeDetail | `src/features/trades/components/trade-detail.tsx` | Detail view with options/crypto info cards and exit legs section | `deleteTrade`, ExitLegsSection, LinkButton |
 | ExitLegsSection | `src/features/trades/components/exit-legs-section.tsx` | Per-leg table with progress bar, add/edit/delete | ExitLegForm, server actions |
 | ExitLegForm | `src/features/trades/components/exit-leg-form.tsx` | Inline form for add/edit a single exit leg | `addExitLeg`, `updateExitLeg` |
 | TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form with conditional options/crypto sections | Server action `updateTrade`, shadcn/ui |
-| Sidebar | `src/shared/components/sidebar.tsx` | Navigation (Dashboard, Trades, Journal, Playbooks, Tags, Reviews, Settings active) | lucide-react |
+| Sidebar | `src/shared/components/sidebar.tsx` | Navigation with icons (Dashboard, Trades, Journal, Playbooks, Tags, Reviews, Settings) | lucide-react |
 | SettingsTabs | `src/features/settings/components/settings-tabs.tsx` | Tabs compositor: Profile, Trade Defaults, Display, Data Management | ProfileForm, TradeDefaultsForm, DisplayPreferencesForm, DataManagement |
 | ProfileForm | `src/features/settings/components/profile-form.tsx` | Trader name, timezone, currency, startingCapital | `updateSettings`, shadcn/ui |
 | TradeDefaultsForm | `src/features/settings/components/trade-defaults-form.tsx` | Commission, risk %, position sizing method | `updateSettings`, shadcn/ui |
@@ -46,13 +48,14 @@ graph TB
 | DataManagement | `src/features/settings/components/data-management.tsx` | Export CSV/JSON links, CSV import with error report, Clear All Trades dialog | `importTradesFromCsv`, `clearAllTrades` |
 | SettingsQueries | `src/features/settings/services/queries.ts` | `getSettings()` with hardcoded fallback default | Drizzle |
 | SettingsActions | `src/features/settings/services/actions.ts` | `updateSettings` (upsert), `importTradesFromCsv` (partial), `clearAllTrades` | Drizzle, Zod |
-| StatCard | `src/features/dashboard/components/stat-card.tsx` | Summary metric card with trend coloring | Card |
+| StatCard | `src/features/dashboard/components/stat-card.tsx` | Summary metric card with trend coloring and optional subtitle | Card |
+| DateRangeFilter | `src/features/dashboard/components/date-range-filter.tsx` | Preset date range buttons (7D/30D/90D/YTD/All) via URL search params | Button |
 | EquityCurve | `src/features/dashboard/components/equity-curve.tsx` | Recharts AreaChart — cumulative P&L over time | recharts |
 | AssetClassBreakdown | `src/features/dashboard/components/asset-class-breakdown.tsx` | Recharts BarChart — P&L by asset class | recharts |
 | WinLossChart | `src/features/dashboard/components/win-loss-chart.tsx` | Recharts PieChart — win/loss distribution | recharts |
 | RecentTradesTable | `src/features/dashboard/components/recent-trades-table.tsx` | Last 10 closed trades table | PnlBadge, Table |
 | DashboardCharts | `src/features/dashboard/components/dashboard-charts.tsx` | Client wrapper composing chart components | EquityCurve, AssetClassBreakdown, WinLossChart |
-| DashboardQueries | `src/features/dashboard/services/queries.ts` | getDashboardData, computeDashboardMetrics (pure) | getTrades from trades feature |
+| DashboardQueries | `src/features/dashboard/services/queries.ts` | getDashboardData, computeDashboardMetrics, computeMaxDrawdown, computeRMultipleStats (all pure) | getTrades from trades feature |
 | JournalList | `src/features/journal/components/journal-list.tsx` | Card list of entries with category badge, mood emoji, trade count | — |
 | JournalForm | `src/features/journal/components/journal-form.tsx` | Create form: Entry Info, Content, Psychology, Linked Trades | `createJournalEntry`, shadcn/ui |
 | JournalEditForm | `src/features/journal/components/journal-edit-form.tsx` | Edit form pre-populated with existing entry | `updateJournalEntry`, shadcn/ui |
@@ -120,7 +123,7 @@ Future API routes (Phase 3+):
 
 | Route | Type | Description |
 |-------|------|-------------|
-| `/` | Server | Redirects to `/trades` |
+| `/` | Server | Redirects to `/dashboard` |
 | `/dashboard` | Server | Performance dashboard with charts |
 | `/dashboard/loading.tsx` | Server | Skeleton loading state |
 | `/trades` | Server | Trade list with empty state |
@@ -135,6 +138,15 @@ Future API routes (Phase 3+):
 | `/journal/[id]/edit` | Server | Edit journal entry form |
 | `/journal/loading.tsx` | Server | Skeleton loading state |
 | `/journal/error.tsx` | Client | Error boundary with retry |
+| `/playbooks` | Server | Playbook list |
+| `/playbooks/loading.tsx` | Server | Skeleton loading state |
+| `/playbooks/error.tsx` | Client | Error boundary with retry |
+| `/reviews` | Server | Review list |
+| `/reviews/loading.tsx` | Server | Skeleton loading state |
+| `/reviews/error.tsx` | Client | Error boundary with retry |
+| `/tags` | Server | Tag manager |
+| `/tags/loading.tsx` | Server | Skeleton loading state |
+| `/tags/error.tsx` | Client | Error boundary with retry |
 | `/settings` | Server | Settings page with 4-tab layout |
 | `/settings/loading.tsx` | Server | Skeleton loading state |
 
@@ -186,7 +198,8 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Phase 2: Options, Crypto & Partial Exits | 2026-03-13 | Options P&L (×contractMultiplier), crypto fee subtraction, exit legs wired (authoritative for P&L/status), partial status, spread linking by spreadId, conditional form sections per asset class, DTE computed not stored | `src/lib/db/schema.ts` (+17 cols), all files in `src/features/trades/`, 114 tests passing |
 | Journal Feature | 2026-03-15 | Free-form diary with 5 categories, mood/energy 1-5, market sentiment enum, optional trade linking via junction table (unique constraint). Multiple entries per day allowed, ordered by date+createdAt desc. No rich text — plain markdown content. | `src/features/journal/` (full feature), `src/lib/db/schema.ts` (+2 tables), `src/app/(app)/journal/` (6 routes), sidebar enabled. 48 tests passing (295 total) |
 | Dashboard | 2026-03-15 | Recharts for charting, reuses getTrades() (no dedicated query), computeDashboardMetrics pure function for testability, per-exit-leg equity curve granularity, optional date range filter type for future use. Dashboard moved to first sidebar position. | `src/features/dashboard/` (full feature), `src/app/(app)/dashboard/` (page + loading), sidebar updated. 18 tests, 313 total |
-| Settings | 2026-03-15 | Single-row SQLite settings table (`id='default'`), upsert via one Server Action with all fields, theme applies client-side via next-themes after confirmed save, CSV export via GET routes (needed for Content-Disposition), CSV import is partial (row-level errors reported), Clear All Trades requires typing DELETE, startingCapital is nullable (0 is valid), dateFormat stored but not yet wired to formatDate (known limitation). | `src/features/settings/` (full feature), `src/lib/db/schema.ts` (+1 table), `src/app/(app)/settings/` (2 files), `src/app/api/export/csv+json/`, `src/app/layout.tsx` (ThemeProvider), sidebar Settings enabled. 44 tests, 357 total |
+| Settings | 2026-03-15 | Single-row SQLite settings table (`id='default'`), upsert via one Server Action with all fields, theme applies client-side via next-themes after confirmed save, CSV export via GET routes (needed for Content-Disposition), CSV import is partial (row-level errors reported), Clear All Trades requires typing DELETE, startingCapital is nullable (0 is valid). | `src/features/settings/` (full feature), `src/lib/db/schema.ts` (+1 table), `src/app/(app)/settings/` (2 files), `src/app/api/export/csv+json/`, `src/app/layout.tsx` (ThemeProvider), sidebar Settings enabled. 44 tests, 357 total |
+| Enhancements V2 | 2026-03-16 | Currency param wired to formatCurrency/formatPrice (defaults USD), root redirect changed to /dashboard, sidebar icons (lucide-react), loading/error states for playbooks/reviews/tags routes, dashboard: profit factor + max drawdown + avg win/loss metrics + date range filter (7D/30D/90D/YTD/All via URL params), trade list: search by ticker + filter by status + filter by asset class (client-side FilterableTradeList wrapper). | `src/shared/utils/formatting.ts`, `src/shared/components/sidebar.tsx`, `src/app/page.tsx`, `src/app/(app)/{playbooks,reviews,tags}/{loading,error}.tsx` (6 new), `src/features/dashboard/{types,services/queries,components/*}.tsx`, `src/features/trades/components/{trade-filters,filterable-trade-list}.tsx` (2 new), `src/app/(app)/{dashboard,trades}/page.tsx`. 465 tests total |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 

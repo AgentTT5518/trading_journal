@@ -7,7 +7,7 @@ Claude Code
 This feature owns all files within `src/features/dashboard/`.
 
 ## Description
-Performance overview dashboard — summary cards, equity curve, P&L breakdown by asset class, win/loss distribution, and recent trades table.
+Performance overview dashboard — summary cards (total P&L, win rate, profit factor, avg R-multiple, max drawdown, avg win/loss), equity curve, P&L breakdown by asset class, win/loss distribution, R-multiple analytics, recent trades table, and date range filtering (7D/30D/90D/YTD/All).
 
 ## Boundary Rules
 **HARD BLOCK: Do NOT edit files outside this folder without explicit user approval.**
@@ -27,7 +27,7 @@ Performance overview dashboard — summary cards, equity curve, P&L breakdown by
 ## Dependencies
 **Shared modules:** `src/shared/components/page-header`, `src/shared/components/empty-state`, `src/shared/components/link-button`, `src/shared/components/pnl-badge`, `src/shared/utils/formatting.ts`
 **External packages:** recharts
-**Other features (read-only):** `src/features/trades/services/queries.ts` (getTrades), `src/features/trades/types.ts` (TradeWithCalculations, ExitLeg)
+**Other features (read-only):** `src/features/trades/services/queries.ts` (getTrades), `src/features/trades/types.ts` (TradeWithCalculations, ExitLeg), `src/features/settings/services/queries.ts` (getSettings)
 
 ## Safe to Edit (no approval needed)
 - `src/features/dashboard/**`
@@ -46,7 +46,8 @@ Performance overview dashboard — summary cards, equity curve, P&L breakdown by
 - [x] Architecture updated
 - [x] Implementation complete
 - [x] All try-catch blocks use `log.error()`
-- [x] Tests passing (18 tests)
+- [x] Enhancements V2: date range filter, profit factor, max drawdown, avg win/loss, stat card subtitle
+- [x] Tests passing (29 tests)
 - [x] ARCHITECTURE.md Feature Log updated
 - [x] Cross-boundary edits logged below
 
@@ -58,3 +59,5 @@ Performance overview dashboard — summary cards, equity curve, P&L breakdown by
 | 2026-03-15 | `src/app/(app)/dashboard/loading.tsx` | Skeleton loader | Plan pre-approved |
 | 2026-03-15 | `package.json` | Added recharts dependency | Plan pre-approved |
 | 2026-03-15 | `ARCHITECTURE.md` | Added dashboard to component map, routes, feature log | Plan pre-approved |
+| 2026-03-16 | `src/app/(app)/dashboard/page.tsx` | Added date range filter via searchParams, new metric cards | Plan pre-approved |
+| 2026-03-16 | `ARCHITECTURE.md` | Updated component map, routes, feature log for Enhancements V2 | Plan pre-approved |

@@ -7,11 +7,42 @@ import { StatCard } from '@/features/dashboard/components/stat-card';
 import { DashboardCharts } from '@/features/dashboard/components/dashboard-charts';
 import { RecentTradesTable } from '@/features/dashboard/components/recent-trades-table';
 import { RMultipleStatsCards } from '@/features/dashboard/components/r-multiple-stats';
+import { DateRangeFilter } from '@/features/dashboard/components/date-range-filter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent } from '@/shared/utils/formatting';
 
-export default async function DashboardPage() {
-  const [data, settings] = await Promise.all([getDashboardData(), getSettings()]);
+type DashboardPageProps = {
+  searchParams: Promise<{ range?: string }>;
+};
+
+function getDateRange(range?: string): { from?: string; to?: string } {
+  if (!range || range === 'all') return {};
+  const now = new Date();
+  const to = now.toISOString();
+  let from: Date;
+  switch (range) {
+    case '7d':
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    case 'ytd':
+      from = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      return {};
+  }
+  return { from: from.toISOString(), to };
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
+  const dateRange = getDateRange(params.range);
+  const [data, settings] = await Promise.all([getDashboardData(dateRange), getSettings()]);
   const { summary } = data;
 
   const pnlTrend =
@@ -40,12 +71,32 @@ export default async function DashboardPage() {
         : 'negative' as const
       : 'neutral' as const;
 
+  const profitFactorValue =
+    summary.profitFactor != null
+      ? summary.profitFactor.toFixed(2)
+      : 'N/A';
+
+  const profitFactorTrend =
+    summary.profitFactor != null
+      ? summary.profitFactor >= 1
+        ? 'positive' as const
+        : 'negative' as const
+      : 'neutral' as const;
+
+  const avgWinLossSubtitle = [
+    summary.avgWin != null ? `Avg Win: ${formatCurrency(summary.avgWin)}` : null,
+    summary.avgLoss != null ? `Avg Loss: ${formatCurrency(summary.avgLoss)}` : null,
+  ].filter(Boolean).join(' / ') || undefined;
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="Your trading performance at a glance"
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Dashboard"
+          description="Your trading performance at a glance"
+        />
+        <DateRangeFilter activeRange={params.range ?? 'all'} />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -56,11 +107,14 @@ export default async function DashboardPage() {
         <StatCard
           title="Win Rate"
           value={summary.totalTrades > 0 ? formatPercent(summary.winRate) : '—'}
+          subtitle={avgWinLossSubtitle}
           trend={winRateTrend}
         />
         <StatCard
-          title="Total Trades"
-          value={String(summary.totalTrades)}
+          title="Profit Factor"
+          value={profitFactorValue}
+          subtitle={summary.totalTrades > 0 ? `${summary.totalTrades} trades` : undefined}
+          trend={profitFactorTrend}
         />
         <StatCard
           title="Avg R-Multiple"
@@ -68,6 +122,36 @@ export default async function DashboardPage() {
           trend={rMultipleTrend}
         />
       </div>
+
+      {summary.maxDrawdown > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            title="Max Drawdown"
+            value={formatCurrency(summary.maxDrawdown)}
+            trend="negative"
+          />
+          <StatCard
+            title="Total Trades"
+            value={String(summary.totalTrades)}
+          />
+          <StatCard
+            title="Avg Win / Avg Loss"
+            value={
+              summary.avgWin != null && summary.avgLoss != null
+                ? (Math.abs(summary.avgWin / summary.avgLoss)).toFixed(2)
+                : 'N/A'
+            }
+            subtitle="Win/Loss ratio"
+            trend={
+              summary.avgWin != null && summary.avgLoss != null
+                ? Math.abs(summary.avgWin) > Math.abs(summary.avgLoss)
+                  ? 'positive'
+                  : 'negative'
+                : 'neutral'
+            }
+          />
+        </div>
+      )}
 
       {summary.totalTrades === 0 ? (
         <EmptyState

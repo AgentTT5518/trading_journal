@@ -11,7 +11,7 @@ vi.mock('@/features/trades/services/queries', () => ({
   getTrades: mockGetTrades,
 }));
 
-import { computeDashboardMetrics, computeRMultipleStats, getDashboardData } from '@/features/dashboard/services/queries';
+import { computeDashboardMetrics, computeRMultipleStats, computeMaxDrawdown, getDashboardData } from '@/features/dashboard/services/queries';
 import type { Trade, ExitLeg, TradeWithCalculations } from '@/features/trades/types';
 import { enrichTradeWithCalculations } from '@/features/trades/services/calculations';
 
@@ -129,6 +129,10 @@ describe('computeDashboardMetrics', () => {
         winRate: 0,
         totalTrades: 0,
         avgRMultiple: null,
+        profitFactor: null,
+        maxDrawdown: 0,
+        avgWin: null,
+        avgLoss: null,
       });
       expect(result.equityCurve).toEqual([]);
       expect(result.assetClassBreakdown).toEqual([]);
@@ -256,6 +260,58 @@ describe('computeDashboardMetrics', () => {
       const result = computeDashboardMetrics([t1, t2]);
 
       expect(result.summary.avgRMultiple).toBeNull();
+    });
+
+    it('computes profit factor as gross wins / gross losses', () => {
+      // Winner: 100 * (110-100) = 1000
+      const winner = makeEnrichedTrade({
+        id: 'w1',
+        entryPrice: 100,
+        exitPrice: 110,
+        positionSize: 100,
+      });
+      // Loser: 100 * (100-90) = -1000 (but exit at 95 → -500)
+      const loser = makeEnrichedTrade({
+        id: 'l1',
+        entryPrice: 100,
+        exitPrice: 95,
+        positionSize: 100,
+      });
+
+      const result = computeDashboardMetrics([winner, loser]);
+
+      // grossWins = 1000, grossLosses = |(-500)| = 500
+      expect(result.summary.profitFactor).toBeCloseTo(2.0, 2);
+    });
+
+    it('returns null profit factor when no losses', () => {
+      const winner = makeEnrichedTrade({
+        id: 'w1',
+        exitPrice: 110,
+        positionSize: 100,
+      });
+
+      const result = computeDashboardMetrics([winner]);
+
+      expect(result.summary.profitFactor).toBeNull();
+    });
+
+    it('computes avgWin and avgLoss correctly', () => {
+      const w1 = makeEnrichedTrade({ id: 'w1', exitPrice: 110, positionSize: 100 }); // +1000
+      const w2 = makeEnrichedTrade({ id: 'w2', exitPrice: 120, positionSize: 100 }); // +2000
+      const l1 = makeEnrichedTrade({ id: 'l1', exitPrice: 90, positionSize: 100 });  // -1000
+
+      const result = computeDashboardMetrics([w1, w2, l1]);
+
+      expect(result.summary.avgWin).toBeCloseTo(1500, 0); // (1000+2000)/2
+      expect(result.summary.avgLoss).toBeCloseTo(-1000, 0);
+    });
+
+    it('returns null avgWin when no wins and null avgLoss when no losses', () => {
+      const loser = makeEnrichedTrade({ id: 'l1', exitPrice: 90, positionSize: 100 });
+      const result = computeDashboardMetrics([loser]);
+      expect(result.summary.avgWin).toBeNull();
+      expect(result.summary.avgLoss).toBeCloseTo(-1000, 0);
     });
   });
 
@@ -564,6 +620,39 @@ describe('computeDashboardMetrics', () => {
       expect(result.rMultipleStats).toBeDefined();
       expect(result.rMultipleStats.totalWithR).toBe(1);
     });
+  });
+});
+
+describe('computeMaxDrawdown', () => {
+  it('returns 0 for empty trades', () => {
+    expect(computeMaxDrawdown([])).toBe(0);
+  });
+
+  it('returns 0 when equity only goes up', () => {
+    const t1 = makeEnrichedTrade({ id: 't1', exitDate: '2024-01-05T15:00:00.000Z', exitPrice: 110, positionSize: 100 });
+    const t2 = makeEnrichedTrade({ id: 't2', exitDate: '2024-01-10T15:00:00.000Z', exitPrice: 120, positionSize: 100 });
+
+    expect(computeMaxDrawdown([t1, t2])).toBe(0);
+  });
+
+  it('computes drawdown after a win followed by a loss', () => {
+    // Trade 1: +1000 (peak = 1000)
+    const t1 = makeEnrichedTrade({ id: 't1', exitDate: '2024-01-05T15:00:00.000Z', exitPrice: 110, positionSize: 100 });
+    // Trade 2: -500 (cumulative = 500, drawdown from peak = 500)
+    const t2 = makeEnrichedTrade({ id: 't2', exitDate: '2024-01-10T15:00:00.000Z', exitPrice: 95, positionSize: 100 });
+
+    expect(computeMaxDrawdown([t1, t2])).toBe(500);
+  });
+
+  it('tracks the largest drawdown across multiple swings', () => {
+    // +1000 → peak 1000
+    const t1 = makeEnrichedTrade({ id: 't1', exitDate: '2024-01-05T15:00:00.000Z', exitPrice: 110, positionSize: 100 });
+    // -2000 → cumulative -1000, dd from peak 1000 = 2000
+    const t2 = makeEnrichedTrade({ id: 't2', exitDate: '2024-01-10T15:00:00.000Z', exitPrice: 80, positionSize: 100 });
+    // +500 → cumulative -500, dd from peak still 1500
+    const t3 = makeEnrichedTrade({ id: 't3', exitDate: '2024-01-15T15:00:00.000Z', exitPrice: 105, positionSize: 100 });
+
+    expect(computeMaxDrawdown([t1, t2, t3])).toBe(2000);
   });
 });
 
