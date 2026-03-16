@@ -14,9 +14,10 @@ import type { EquityCurvePoint } from '../types';
 
 type EquityCurveProps = {
   data: EquityCurvePoint[];
+  dateFormat?: string;
 };
 
-export function EquityCurve({ data }: EquityCurveProps) {
+export function EquityCurve({ data, dateFormat }: EquityCurveProps) {
   if (data.length < 2) {
     return (
       <div className="flex h-[300px] items-center justify-center text-muted-foreground">
@@ -31,7 +32,7 @@ export function EquityCurve({ data }: EquityCurveProps) {
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis
           dataKey="date"
-          tickFormatter={(v: string) => formatDate(v)}
+          tickFormatter={(v: string) => formatDate(v, dateFormat)}
           className="text-xs"
           tick={{ fill: 'hsl(var(--muted-foreground))' }}
         />
@@ -43,7 +44,7 @@ export function EquityCurve({ data }: EquityCurveProps) {
         />
         <Tooltip
           formatter={(value) => [formatCurrency(Number(value)), 'Cumulative P&L']}
-          labelFormatter={(label) => formatDate(String(label))}
+          labelFormatter={(label) => formatDate(String(label), dateFormat)}
           contentStyle={{
             backgroundColor: 'hsl(var(--card))',
             border: '1px solid hsl(var(--border))',

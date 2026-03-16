@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTradeById } from '@/features/trades/services/queries';
+import { getSettings } from '@/features/settings/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { TradeDetail } from '@/features/trades/components/trade-detail';
 import { LinkButton } from '@/shared/components/link-button';
@@ -12,10 +13,11 @@ export default async function TradeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [trade, tradeTags, screenshots] = await Promise.all([
+  const [trade, tradeTags, screenshots, settings] = await Promise.all([
     getTradeById(id),
     getTradeTagsForTrade(id),
     getScreenshotsForTrade(id),
+    getSettings(),
   ]);
 
   if (!trade) {
@@ -33,7 +35,7 @@ export default async function TradeDetailPage({
           </LinkButton>
         }
       />
-      <TradeDetail trade={trade} tradeTags={tradeTags} screenshots={screenshots} />
+      <TradeDetail trade={trade} tradeTags={tradeTags} screenshots={screenshots} dateFormat={settings.dateFormat} />
     </div>
   );
 }

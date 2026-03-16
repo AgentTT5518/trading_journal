@@ -32,12 +32,27 @@ export type RecentTradeRow = {
   pnlPercent: number | null;
 };
 
+export type RMultipleBucket = {
+  range: string;
+  count: number;
+  isPositive: boolean;
+};
+
+export type RMultipleStats = {
+  distribution: RMultipleBucket[];
+  expectancy: number | null;
+  avgWinR: number | null;
+  avgLossR: number | null;
+  totalWithR: number;
+};
+
 export type DashboardData = {
   summary: DashboardSummary;
   equityCurve: EquityCurvePoint[];
   assetClassBreakdown: AssetClassPnl[];
   winLoss: WinLossData;
   recentTrades: RecentTradeRow[];
+  rMultipleStats: RMultipleStats;
 };
 
 export type DashboardFilterOptions = {

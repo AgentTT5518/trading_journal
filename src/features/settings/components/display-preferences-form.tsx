@@ -82,7 +82,7 @@ export function DisplayPreferencesForm({ settings }: DisplayPreferencesFormProps
               </SelectContent>
             </Select>
             <p className="mt-1 text-xs text-muted-foreground">
-              Note: date format is stored but not yet applied to all date displays.
+              Controls how dates are displayed across all pages.
             </p>
           </div>
 

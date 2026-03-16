@@ -1,15 +1,17 @@
 import { getDashboardData } from '@/features/dashboard/services/queries';
+import { getSettings } from '@/features/settings/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
 import { StatCard } from '@/features/dashboard/components/stat-card';
 import { DashboardCharts } from '@/features/dashboard/components/dashboard-charts';
 import { RecentTradesTable } from '@/features/dashboard/components/recent-trades-table';
+import { RMultipleStatsCards } from '@/features/dashboard/components/r-multiple-stats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent } from '@/shared/utils/formatting';
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const [data, settings] = await Promise.all([getDashboardData(), getSettings()]);
   const { summary } = data;
 
   const pnlTrend =
@@ -75,10 +77,16 @@ export default async function DashboardPage() {
         />
       ) : (
         <>
+          {data.rMultipleStats.totalWithR > 0 && (
+            <RMultipleStatsCards stats={data.rMultipleStats} />
+          )}
+
           <DashboardCharts
             equityCurve={data.equityCurve}
             assetClassBreakdown={data.assetClassBreakdown}
             winLoss={data.winLoss}
+            rMultipleDistribution={data.rMultipleStats.distribution}
+            dateFormat={settings.dateFormat}
           />
 
           <Card>
@@ -86,7 +94,7 @@ export default async function DashboardPage() {
               <CardTitle>Recent Trades</CardTitle>
             </CardHeader>
             <CardContent>
-              <RecentTradesTable trades={data.recentTrades} />
+              <RecentTradesTable trades={data.recentTrades} dateFormat={settings.dateFormat} />
             </CardContent>
           </Card>
         </>

@@ -11,12 +11,14 @@ import { deleteExitLeg } from '../services/actions';
 import { getPositionMultiplier } from '../services/calculations';
 import { ExitLegForm } from './exit-leg-form';
 import type { TradeWithCalculations, ExitLeg } from '../types';
+import { cn } from '@/lib/utils';
 
 interface ExitLegsSectionProps {
   trade: TradeWithCalculations;
+  dateFormat?: string;
 }
 
-export function ExitLegsSection({ trade }: ExitLegsSectionProps) {
+export function ExitLegsSection({ trade, dateFormat }: ExitLegsSectionProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingLeg, setEditingLeg] = useState<ExitLeg | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -89,9 +91,16 @@ export function ExitLegsSection({ trade }: ExitLegsSectionProps) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {trade.exitLegs.map((leg) => (
-                  <tr key={leg.id}>
-                    <td className="py-2 pr-4">{formatDate(leg.exitDate)}</td>
+                {trade.exitLegs.map((leg, i) => (
+                  <tr
+                    key={leg.id}
+                    className={cn(
+                      'animate-in fade-in-0 duration-150 transition-opacity',
+                      deletingId === leg.id && 'opacity-50',
+                    )}
+                    style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'backwards' }}
+                  >
+                    <td className="py-2 pr-4">{formatDate(leg.exitDate, dateFormat)}</td>
                     <td className="py-2 pr-4">{formatPrice(leg.exitPrice)}</td>
                     <td className="py-2 pr-4">{leg.quantity.toLocaleString()}</td>
                     <td className="py-2 pr-4">{formatCurrency(leg.fees)}</td>
@@ -134,21 +143,25 @@ export function ExitLegsSection({ trade }: ExitLegsSectionProps) {
 
         {/* Edit form */}
         {editingLeg && (
-          <ExitLegForm
-            tradeId={trade.id}
-            remainingQty={remaining / multiplier}
-            existingLeg={editingLeg}
-            onDone={() => setEditingLeg(null)}
-          />
+          <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
+            <ExitLegForm
+              tradeId={trade.id}
+              remainingQty={remaining / multiplier}
+              existingLeg={editingLeg}
+              onDone={() => setEditingLeg(null)}
+            />
+          </div>
         )}
 
         {/* Add form */}
         {showAddForm && !editingLeg && (
-          <ExitLegForm
-            tradeId={trade.id}
-            remainingQty={remaining / multiplier}
-            onDone={() => setShowAddForm(false)}
-          />
+          <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
+            <ExitLegForm
+              tradeId={trade.id}
+              remainingQty={remaining / multiplier}
+              onDone={() => setShowAddForm(false)}
+            />
+          </div>
         )}
 
         {/* Add button */}

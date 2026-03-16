@@ -58,9 +58,10 @@ interface TradeDetailProps {
   trade: TradeWithCalculations;
   tradeTags?: TradeTagWithTag[];
   screenshots?: Screenshot[];
+  dateFormat?: string;
 }
 
-export function TradeDetail({ trade, tradeTags = [], screenshots = [] }: TradeDetailProps) {
+export function TradeDetail({ trade, tradeTags = [], screenshots = [], dateFormat }: TradeDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -151,7 +152,7 @@ export function TradeDetail({ trade, tradeTags = [], screenshots = [] }: TradeDe
           <CardTitle>Entry</CardTitle>
         </CardHeader>
         <CardContent className="divide-y">
-          <DetailRow label="Date" value={formatDate(trade.entryDate)} />
+          <DetailRow label="Date" value={formatDate(trade.entryDate, dateFormat)} />
           <DetailRow
             label={isOption ? 'Premium Paid' : 'Price'}
             value={formatPrice(trade.entryPrice)}
@@ -185,7 +186,7 @@ export function TradeDetail({ trade, tradeTags = [], screenshots = [] }: TradeDe
         <CardContent className="divide-y">
           {!usesExitLegs ? (
             <>
-              <DetailRow label="Date" value={formatDate(trade.exitDate)} />
+              <DetailRow label="Date" value={formatDate(trade.exitDate, dateFormat)} />
               <DetailRow
                 label={isOption ? 'Exit Premium' : 'Price'}
                 value={formatPrice(trade.exitPrice)}
@@ -487,7 +488,7 @@ export function TradeDetail({ trade, tradeTags = [], screenshots = [] }: TradeDe
       </Card>
 
       {/* Exit Legs Section */}
-      <ExitLegsSection trade={trade} />
+      <ExitLegsSection trade={trade} dateFormat={dateFormat} />
 
       {/* Notes */}
       {trade.notes && (

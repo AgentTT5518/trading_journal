@@ -7,6 +7,8 @@ import type {
   AssetClassPnl,
   WinLossData,
   RecentTradeRow,
+  RMultipleStats,
+  RMultipleBucket,
   DashboardFilterOptions,
 } from '../types';
 import { log } from '../logger';
@@ -40,8 +42,9 @@ export function computeDashboardMetrics(
   const assetClassBreakdown = computeAssetClassBreakdown(closedTrades);
   const winLoss = computeWinLoss(closedTrades);
   const recentTrades = computeRecentTrades(closedTrades);
+  const rMultipleStats = computeRMultipleStats(closedTrades);
 
-  return { summary, equityCurve, assetClassBreakdown, winLoss, recentTrades };
+  return { summary, equityCurve, assetClassBreakdown, winLoss, recentTrades, rMultipleStats };
 }
 
 function getEffectiveExitDate(trade: TradeWithCalculations): string | null {
@@ -160,6 +163,56 @@ function computeRecentTrades(closedTrades: TradeWithCalculations[]): RecentTrade
     netPnl: t.netPnl,
     pnlPercent: t.pnlPercent,
   }));
+}
+
+const R_BUCKETS: { label: string; min: number; max: number; isPositive: boolean }[] = [
+  { label: '< -3R', min: -Infinity, max: -3, isPositive: false },
+  { label: '-3 to -2R', min: -3, max: -2, isPositive: false },
+  { label: '-2 to -1R', min: -2, max: -1, isPositive: false },
+  { label: '-1 to 0R', min: -1, max: 0, isPositive: false },
+  { label: '0 to 1R', min: 0, max: 1, isPositive: true },
+  { label: '1 to 2R', min: 1, max: 2, isPositive: true },
+  { label: '2 to 3R', min: 2, max: 3, isPositive: true },
+  { label: '> 3R', min: 3, max: Infinity, isPositive: true },
+];
+
+export function computeRMultipleStats(closedTrades: TradeWithCalculations[]): RMultipleStats {
+  const rValues = closedTrades
+    .map((t) => t.rMultiple)
+    .filter((r): r is number => r != null);
+
+  const distribution: RMultipleBucket[] = R_BUCKETS.map((bucket) => ({
+    range: bucket.label,
+    count: rValues.filter((r) => {
+      if (bucket.max === Infinity) return r > bucket.min;
+      if (bucket.min === -Infinity) return r <= bucket.max;
+      return r > bucket.min && r <= bucket.max;
+    }).length,
+    isPositive: bucket.isPositive,
+  }));
+
+  if (rValues.length === 0) {
+    return { distribution, expectancy: null, avgWinR: null, avgLossR: null, totalWithR: 0 };
+  }
+
+  const wins = rValues.filter((r) => r > 0);
+  const losses = rValues.filter((r) => r <= 0);
+
+  const avgWinR = wins.length > 0
+    ? wins.reduce((s, r) => s + r, 0) / wins.length
+    : null;
+  const avgLossR = losses.length > 0
+    ? Math.abs(losses.reduce((s, r) => s + r, 0) / losses.length)
+    : null;
+
+  const winRate = wins.length / rValues.length;
+  const lossRate = losses.length / rValues.length;
+
+  const expectancy =
+    (avgWinR != null ? winRate * avgWinR : 0) -
+    (avgLossR != null ? lossRate * avgLossR : 0);
+
+  return { distribution, expectancy, avgWinR, avgLossR, totalWithR: rValues.length };
 }
 
 export async function getDashboardData(

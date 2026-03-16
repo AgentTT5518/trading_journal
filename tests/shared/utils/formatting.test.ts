@@ -43,15 +43,31 @@ describe('formatPercent', () => {
 });
 
 describe('formatDate', () => {
-  it('formats ISO date string', () => {
-    const result = formatDate('2024-01-15T10:00:00.000Z');
-    expect(result).toMatch(/Jan/);
-    expect(result).toMatch(/15/);
-    expect(result).toMatch(/2024/);
+  // Use a date that won't shift days across timezones
+  const iso = '2024-01-15T12:00:00.000Z';
+
+  it('defaults to MM/DD/YYYY when no format specified', () => {
+    expect(formatDate(iso)).toBe('01/15/2024');
+  });
+
+  it('formats as MM/DD/YYYY', () => {
+    expect(formatDate(iso, 'MM/DD/YYYY')).toBe('01/15/2024');
+  });
+
+  it('formats as DD/MM/YYYY', () => {
+    expect(formatDate(iso, 'DD/MM/YYYY')).toBe('15/01/2024');
+  });
+
+  it('formats as YYYY-MM-DD', () => {
+    expect(formatDate(iso, 'YYYY-MM-DD')).toBe('2024-01-15');
   });
 
   it('returns dash for null', () => {
     expect(formatDate(null)).toBe('—');
+  });
+
+  it('returns dash for empty string', () => {
+    expect(formatDate('')).toBe('—');
   });
 });
 
