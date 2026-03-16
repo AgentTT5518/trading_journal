@@ -3,7 +3,7 @@ import { getSettings } from '@/features/settings/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
-import { TradeList } from '@/features/trades/components/trade-list';
+import { FilterableTradeList } from '@/features/trades/components/filterable-trade-list';
 
 export default async function TradesPage() {
   const [trades, settings] = await Promise.all([getTrades(), getSettings()]);
@@ -24,7 +24,7 @@ export default async function TradesPage() {
           }
         />
       ) : (
-        <TradeList trades={trades} dateFormat={settings.dateFormat} />
+        <FilterableTradeList trades={trades} dateFormat={settings.dateFormat} />
       )}
     </div>
   );

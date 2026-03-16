@@ -22,6 +22,14 @@ describe('formatCurrency', () => {
   it('formats zero', () => {
     expect(formatCurrency(0)).toBe('$0.00');
   });
+
+  it('formats with custom currency', () => {
+    expect(formatCurrency(1234.56, 'EUR')).toBe('€1,234.56');
+  });
+
+  it('defaults to USD when no currency specified', () => {
+    expect(formatCurrency(100)).toBe('$100.00');
+  });
 });
 
 describe('formatPercent', () => {
@@ -78,5 +86,9 @@ describe('formatPrice', () => {
 
   it('returns dash for null', () => {
     expect(formatPrice(null)).toBe('—');
+  });
+
+  it('formats with custom currency', () => {
+    expect(formatPrice(150.25, 'EUR')).toBe('€150.25');
   });
 });

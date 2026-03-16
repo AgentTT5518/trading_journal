@@ -61,10 +61,11 @@ function computeSummary(closedTrades: TradeWithCalculations[]): DashboardSummary
   // closedTrades filter guarantees netPnl != null; ?? 0 right-side branches are unreachable
   /* c8 ignore start */
   const totalPnl = closedTrades.reduce((sum, t) => sum + (t.netPnl ?? 0), 0);
-  const wins = closedTrades.filter((t) => (t.netPnl ?? 0) > 0).length;
+  const winTrades = closedTrades.filter((t) => (t.netPnl ?? 0) > 0);
+  const lossTrades = closedTrades.filter((t) => (t.netPnl ?? 0) < 0);
   /* c8 ignore stop */
   const totalTrades = closedTrades.length;
-  const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
+  const winRate = totalTrades > 0 ? (winTrades.length / totalTrades) * 100 : 0;
 
   const rMultiples = closedTrades
     .map((t) => t.rMultiple)
@@ -74,7 +75,57 @@ function computeSummary(closedTrades: TradeWithCalculations[]): DashboardSummary
       ? rMultiples.reduce((sum, r) => sum + r, 0) / rMultiples.length
       : null;
 
-  return { totalPnl, winRate, totalTrades, avgRMultiple };
+  // Profit factor: gross wins / gross losses (absolute value)
+  /* c8 ignore start */
+  const grossWins = winTrades.reduce((sum, t) => sum + (t.netPnl ?? 0), 0);
+  const grossLosses = Math.abs(lossTrades.reduce((sum, t) => sum + (t.netPnl ?? 0), 0));
+  /* c8 ignore stop */
+  const profitFactor = grossLosses > 0 ? grossWins / grossLosses : null;
+
+  // Max drawdown: largest peak-to-trough decline in equity curve
+  const maxDrawdown = computeMaxDrawdown(closedTrades);
+
+  // Average win / average loss (dollar amounts)
+  /* c8 ignore start */
+  const avgWin = winTrades.length > 0
+    ? winTrades.reduce((sum, t) => sum + (t.netPnl ?? 0), 0) / winTrades.length
+    : null;
+  const avgLoss = lossTrades.length > 0
+    ? lossTrades.reduce((sum, t) => sum + (t.netPnl ?? 0), 0) / lossTrades.length
+    : null;
+  /* c8 ignore stop */
+
+  return { totalPnl, winRate, totalTrades, avgRMultiple, profitFactor, maxDrawdown, avgWin, avgLoss };
+}
+
+// Computes max drawdown as the largest peak-to-trough decline in cumulative P&L.
+// Returns 0 when there are no trades or equity never declines.
+export function computeMaxDrawdown(closedTrades: TradeWithCalculations[]): number {
+  if (closedTrades.length === 0) return 0;
+
+  // Sort by effective exit date
+  const sorted = [...closedTrades].sort((a, b) => {
+    /* c8 ignore start */
+    const dateA = getEffectiveExitDate(a) ?? '';
+    const dateB = getEffectiveExitDate(b) ?? '';
+    /* c8 ignore stop */
+    return dateA.localeCompare(dateB);
+  });
+
+  let cumulative = 0;
+  let peak = 0;
+  let maxDd = 0;
+
+  for (const trade of sorted) {
+    /* c8 ignore start */
+    cumulative += trade.netPnl ?? 0;
+    /* c8 ignore stop */
+    if (cumulative > peak) peak = cumulative;
+    const dd = peak - cumulative;
+    if (dd > maxDd) maxDd = dd;
+  }
+
+  return maxDd;
 }
 
 function computeEquityCurve(closedTrades: TradeWithCalculations[]): EquityCurvePoint[] {

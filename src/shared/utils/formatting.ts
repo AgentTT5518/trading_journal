@@ -1,8 +1,8 @@
-export function formatCurrency(value: number | null): string {
+export function formatCurrency(value: number | null, currency = 'USD'): string {
   if (value == null) return '—';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
   }).format(value);
 }
 
@@ -28,11 +28,11 @@ export function formatDate(isoString: string | null, dateFormat?: string): strin
   }
 }
 
-export function formatPrice(value: number | null): string {
+export function formatPrice(value: number | null, currency = 'USD'): string {
   if (value == null) return '—';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 4,
   }).format(value);
