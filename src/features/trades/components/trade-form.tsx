@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,13 @@ export function TradeForm({ tags }: TradeFormProps) {
   const [state, formAction, isPending] = useActionState(createTrade, initialState);
   const [assetClass, setAssetClass] = useState<AssetClass>('stock');
 
+  // Prevent React 19's automatic form reset on every action call (including validation failures).
+  // Using onSubmit + e.preventDefault() keeps uncontrolled input values intact when errors occur.
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    formAction(new FormData(e.currentTarget));
+  }
+
   useEffect(() => {
     if (state.success && state.data) {
       toast.success('Trade logged successfully');
@@ -51,7 +59,7 @@ export function TradeForm({ tags }: TradeFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction}>
+    <form onSubmit={handleSubmit}>
       <Tabs defaultValue="trade">
         <TabsList>
           <TabsTrigger value="trade">Trade</TabsTrigger>

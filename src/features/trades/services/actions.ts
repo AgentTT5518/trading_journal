@@ -13,7 +13,11 @@ import { revalidatePath } from 'next/cache';
 
 /** Parse FormData into the shape tradeInsertSchema expects */
 function parseTradeFormData(raw: Record<string, FormDataEntryValue>) {
-  const num = (key: string) => (raw[key] ? Number(raw[key]) : undefined);
+  // Use strict empty/undefined check so that "0" is preserved as 0, not dropped to undefined.
+  const num = (key: string) => {
+    const v = raw[key];
+    return v !== undefined && v !== '' ? Number(v) : undefined;
+  };
   const str = (key: string) => raw[key] || undefined;
   const nullable = (key: string) => raw[key] || undefined;
   const bool = (key: string) => raw[key] === 'on' || raw[key] === 'true' ? true : false;
@@ -30,39 +34,39 @@ function parseTradeFormData(raw: Record<string, FormDataEntryValue>) {
     entryTrigger: str('entryTrigger'),
     // Exit
     exitDate: nullable('exitDate'),
-    exitPrice: raw.exitPrice ? Number(raw.exitPrice) : undefined,
+    exitPrice: num('exitPrice'),
     exitReason: nullable('exitReason'),
     // Fees
-    commissions: raw.commissions ? Number(raw.commissions) : 0,
-    fees: raw.fees ? Number(raw.fees) : 0,
+    commissions: num('commissions') ?? 0,
+    fees: num('fees') ?? 0,
     notes: str('notes'),
     // Options
     optionType: nullable('optionType'),
-    strike: raw.strike ? Number(raw.strike) : undefined,
+    strike: num('strike'),
     expiry: nullable('expiry'),
-    contracts: raw.contracts ? Number(raw.contracts) : undefined,
-    contractMultiplier: raw.contractMultiplier ? Number(raw.contractMultiplier) : 100,
-    delta: raw.delta ? Number(raw.delta) : undefined,
-    gamma: raw.gamma ? Number(raw.gamma) : undefined,
-    theta: raw.theta ? Number(raw.theta) : undefined,
-    vega: raw.vega ? Number(raw.vega) : undefined,
-    iv: raw.iv ? Number(raw.iv) : undefined,
-    ivRank: raw.ivRank ? Number(raw.ivRank) : undefined,
+    contracts: num('contracts'),
+    contractMultiplier: num('contractMultiplier') ?? 100,
+    delta: num('delta'),
+    gamma: num('gamma'),
+    theta: num('theta'),
+    vega: num('vega'),
+    iv: num('iv'),
+    ivRank: num('ivRank'),
     spreadId: nullable('spreadId'),
     spreadType: nullable('spreadType'),
     // Crypto
     exchange: nullable('exchange'),
     tradingPair: nullable('tradingPair'),
-    makerFee: raw.makerFee ? Number(raw.makerFee) : undefined,
-    takerFee: raw.takerFee ? Number(raw.takerFee) : undefined,
-    networkFee: raw.networkFee ? Number(raw.networkFee) : undefined,
-    fundingRate: raw.fundingRate ? Number(raw.fundingRate) : undefined,
-    leverage: raw.leverage ? Number(raw.leverage) : undefined,
-    liquidationPrice: raw.liquidationPrice ? Number(raw.liquidationPrice) : undefined,
+    makerFee: num('makerFee'),
+    takerFee: num('takerFee'),
+    networkFee: num('networkFee'),
+    fundingRate: num('fundingRate'),
+    leverage: num('leverage'),
+    liquidationPrice: num('liquidationPrice'),
     marketCapCategory: nullable('marketCapCategory'),
     tokenType: nullable('tokenType'),
-    btcDominance: raw.btcDominance ? Number(raw.btcDominance) : undefined,
-    btcCorrelation: raw.btcCorrelation ? Number(raw.btcCorrelation) : undefined,
+    btcDominance: num('btcDominance'),
+    btcCorrelation: num('btcCorrelation'),
     // Swing context (Phase 5)
     plannedHoldDays: num('plannedHoldDays'),
     heldOverWeekend: bool('heldOverWeekend'),
