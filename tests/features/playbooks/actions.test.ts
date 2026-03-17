@@ -125,11 +125,12 @@ describe('syncTradeTags', () => {
   });
 
   it('calls transaction with delete and insert', async () => {
-    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
-    const mockTxInsert = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+    const mockRun = vi.fn();
+    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ run: mockRun }) });
+    const mockTxInsert = vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ run: mockRun }) });
 
-    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
-      await fn({ delete: mockTxDelete, insert: mockTxInsert });
+    mockTransaction.mockImplementation((fn: (tx: unknown) => void) => {
+      fn({ delete: mockTxDelete, insert: mockTxInsert });
     });
 
     await syncTradeTags('trade-abc', ['tag-1', 'tag-2']);
@@ -140,11 +141,12 @@ describe('syncTradeTags', () => {
   });
 
   it('only deletes when tagIds is empty', async () => {
-    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    const mockRun = vi.fn();
+    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ run: mockRun }) });
     const mockTxInsert = vi.fn();
 
-    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
-      await fn({ delete: mockTxDelete, insert: mockTxInsert });
+    mockTransaction.mockImplementation((fn: (tx: unknown) => void) => {
+      fn({ delete: mockTxDelete, insert: mockTxInsert });
     });
 
     await syncTradeTags('trade-abc', []);
@@ -154,7 +156,7 @@ describe('syncTradeTags', () => {
   });
 
   it('throws when transaction fails', async () => {
-    mockTransaction.mockRejectedValue(new Error('TX failed'));
+    mockTransaction.mockImplementation(() => { throw new Error('TX failed'); });
 
     await expect(syncTradeTags('trade-abc', ['tag-1'])).rejects.toThrow('TX failed');
   });

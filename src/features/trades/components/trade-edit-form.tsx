@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useTransition } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -46,7 +46,8 @@ interface TradeEditFormProps {
 export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProps) {
   const router = useRouter();
   const updateTradeWithId = updateTrade.bind(null, trade.id);
-  const [state, formAction, isPending] = useActionState(updateTradeWithId, initialState);
+  const [state, formAction] = useActionState(updateTradeWithId, initialState);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (state.success && state.data) {
@@ -61,7 +62,10 @@ export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProp
   // Using onSubmit + e.preventDefault() keeps uncontrolled input values intact when errors occur.
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    formAction(new FormData(e.currentTarget));
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => {
+      formAction(formData);
+    });
   }
 
   const isOption = trade.assetClass === 'option';
