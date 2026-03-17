@@ -7,7 +7,7 @@ Claude Code
 This feature owns all files within `src/features/dashboard/`.
 
 ## Description
-Performance overview dashboard — summary cards (total P&L, win rate, profit factor, avg R-multiple, max drawdown, avg win/loss), equity curve, P&L breakdown by asset class, win/loss distribution, R-multiple analytics, recent trades table, and date range filtering (7D/30D/90D/YTD/All).
+Performance overview dashboard — summary cards (total P&L, win rate, profit factor, avg R-multiple, max drawdown, avg win/loss), equity curve, P&L breakdown by asset class, win/loss distribution, R-multiple analytics, recent trades table, date range filtering (7D/30D/90D/YTD/All), and mood heatmap widget (2-month calendar, color-coded by journal mood 1-5).
 
 ## Boundary Rules
 **HARD BLOCK: Do NOT edit files outside this folder without explicit user approval.**
@@ -47,7 +47,8 @@ Performance overview dashboard — summary cards (total P&L, win rate, profit fa
 - [x] Implementation complete
 - [x] All try-catch blocks use `log.error()`
 - [x] Enhancements V2: date range filter, profit factor, max drawdown, avg win/loss, stat card subtitle
-- [x] Tests passing (29 tests)
+- [x] Mood Heatmap widget: 2-month calendar, color-coded by journal mood 1-5, deduplication by day
+- [x] Tests passing (34 dashboard tests)
 - [x] ARCHITECTURE.md Feature Log updated
 - [x] Cross-boundary edits logged below
 
@@ -61,3 +62,5 @@ Performance overview dashboard — summary cards (total P&L, win rate, profit fa
 | 2026-03-15 | `ARCHITECTURE.md` | Added dashboard to component map, routes, feature log | Plan pre-approved |
 | 2026-03-16 | `src/app/(app)/dashboard/page.tsx` | Added date range filter via searchParams, new metric cards | Plan pre-approved |
 | 2026-03-16 | `ARCHITECTURE.md` | Updated component map, routes, feature log for Enhancements V2 | Plan pre-approved |
+| 2026-03-17 | `src/app/(app)/dashboard/page.tsx` | Added getMoodHeatmapData() call and MoodHeatmap widget render | Plan pre-approved |
+| 2026-03-17 | `ARCHITECTURE.md` | Added MoodHeatmap to component map and feature log | Plan pre-approved |
