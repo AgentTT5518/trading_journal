@@ -63,3 +63,8 @@ export type DashboardFilterOptions = {
   from?: string;
   to?: string;
 };
+
+export type MoodHeatmapDay = {
+  date: string;
+  mood: number;
+};
