@@ -1,6 +1,6 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-16 (Enhancements V2) | Updated by: Claude Code
+> Last updated: 2026-03-17 (P&L Heatmap / Analytics) | Updated by: Claude Code
 
 ## System Overview
 Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, psychology, analytics, and structured reviews. All core features are complete: Trades (stock/option/crypto with partial exits), Dashboard (with date range filtering and advanced metrics), Journal, Playbooks, Tags, Reviews, Screenshots, and Settings.
@@ -40,7 +40,12 @@ graph TB
 | ExitLegsSection | `src/features/trades/components/exit-legs-section.tsx` | Per-leg table with progress bar, add/edit/delete | ExitLegForm, server actions |
 | ExitLegForm | `src/features/trades/components/exit-leg-form.tsx` | Inline form for add/edit a single exit leg | `addExitLeg`, `updateExitLeg` |
 | TradeEditForm | `src/features/trades/components/trade-edit-form.tsx` | Edit form with conditional options/crypto sections | Server action `updateTrade`, shadcn/ui |
-| Sidebar | `src/shared/components/sidebar.tsx` | Navigation with icons (Dashboard, Trades, Journal, Playbooks, Tags, Reviews, Settings) | lucide-react |
+| Sidebar | `src/shared/components/sidebar.tsx` | Navigation with icons (Dashboard, Analytics, Trades, Journal, Playbooks, Tags, Reviews, Settings) | lucide-react |
+| PnlCalendarHeatmap | `src/features/analytics/components/pnl-calendar-heatmap.tsx` | 2-month calendar grid client component composing PnlHeatmapCell and legend | PnlHeatmapCell, PnlHeatmapLegend |
+| PnlHeatmapCell | `src/features/analytics/components/pnl-heatmap-cell.tsx` | Single day cell with color-coded background + hover tooltip | getPnlColorClass, formatCurrency |
+| PnlHeatmapLegend | `src/features/analytics/components/pnl-heatmap-legend.tsx` | Color scale legend (large loss → breakeven → large profit) | — |
+| AnalyticsQueries | `src/features/analytics/services/queries.ts` | computeDailyPnl (pure), buildHeatmapData (pure), getHeatmapData (async) | getTrades from trades feature |
+| ColorTiers | `src/features/analytics/utils/color-tiers.ts` | getPnlColorClass/getPnlColorTier — maps pnl value to Tailwind color class | — |
 | SettingsTabs | `src/features/settings/components/settings-tabs.tsx` | Tabs compositor: Profile, Trade Defaults, Display, Data Management | ProfileForm, TradeDefaultsForm, DisplayPreferencesForm, DataManagement |
 | ProfileForm | `src/features/settings/components/profile-form.tsx` | Trader name, timezone, currency, startingCapital | `updateSettings`, shadcn/ui |
 | TradeDefaultsForm | `src/features/settings/components/trade-defaults-form.tsx` | Commission, risk %, position sizing method | `updateSettings`, shadcn/ui |
@@ -149,6 +154,9 @@ Future API routes (Phase 3+):
 | `/tags/error.tsx` | Client | Error boundary with retry |
 | `/settings` | Server | Settings page with 4-tab layout |
 | `/settings/loading.tsx` | Server | Skeleton loading state |
+| `/analytics` | Server | P&L heatmap page |
+| `/analytics/loading.tsx` | Server | Skeleton loading state |
+| `/analytics/error.tsx` | Client | Error boundary with retry |
 
 ## External Integrations
 
@@ -200,6 +208,7 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Dashboard | 2026-03-15 | Recharts for charting, reuses getTrades() (no dedicated query), computeDashboardMetrics pure function for testability, per-exit-leg equity curve granularity, optional date range filter type for future use. Dashboard moved to first sidebar position. | `src/features/dashboard/` (full feature), `src/app/(app)/dashboard/` (page + loading), sidebar updated. 18 tests, 313 total |
 | Settings | 2026-03-15 | Single-row SQLite settings table (`id='default'`), upsert via one Server Action with all fields, theme applies client-side via next-themes after confirmed save, CSV export via GET routes (needed for Content-Disposition), CSV import is partial (row-level errors reported), Clear All Trades requires typing DELETE, startingCapital is nullable (0 is valid). | `src/features/settings/` (full feature), `src/lib/db/schema.ts` (+1 table), `src/app/(app)/settings/` (2 files), `src/app/api/export/csv+json/`, `src/app/layout.tsx` (ThemeProvider), sidebar Settings enabled. 44 tests, 357 total |
 | Enhancements V2 | 2026-03-16 | Currency param wired to formatCurrency/formatPrice (defaults USD), root redirect changed to /dashboard, sidebar icons (lucide-react), loading/error states for playbooks/reviews/tags routes, dashboard: profit factor + max drawdown + avg win/loss metrics + date range filter (7D/30D/90D/YTD/All via URL params), trade list: search by ticker + filter by status + filter by asset class (client-side FilterableTradeList wrapper). | `src/shared/utils/formatting.ts`, `src/shared/components/sidebar.tsx`, `src/app/page.tsx`, `src/app/(app)/{playbooks,reviews,tags}/{loading,error}.tsx` (6 new), `src/features/dashboard/{types,services/queries,components/*}.tsx`, `src/features/trades/components/{trade-filters,filterable-trade-list}.tsx` (2 new), `src/app/(app)/{dashboard,trades}/page.tsx`. 465 tests total |
+| P&L Heatmap (Analytics) | 2026-03-17 | New `/analytics` route with P&L calendar heatmap. 2 months (current + previous) shown as 7-column CSS grid. Color intensity: 4 discrete green tiers (profit) + 4 red tiers (loss) + gray (no trades) based on pnl/max ratio. Per-leg P&L attribution follows equity curve pattern. Pure functions for testability. No schema changes needed — computes from existing trade data. Phase 2 follow-up: click-to-filter trades by date. | `src/features/analytics/` (new feature: CLAUDE.md, logger, types, services/queries, components/*, utils/color-tiers), `src/app/(app)/analytics/` (page, loading, error), `src/shared/components/sidebar.tsx` (+Analytics nav item). 504 tests total |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
