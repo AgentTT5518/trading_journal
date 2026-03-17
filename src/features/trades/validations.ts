@@ -16,6 +16,12 @@ export const tradeInsertSchema = z
       .enum(['target_hit', 'stop_hit', 'trailing_stop', 'time_based', 'discretionary', 'other'])
       .optional()
       .nullable(),
+    // Risk parameters
+    plannedStopLoss: z.number().positive().optional().nullable(),
+    plannedTarget1: z.number().positive().optional().nullable(),
+    invalidationLevel: z.number().positive().optional().nullable(),
+    riskRewardPlanned: z.number().positive().optional().nullable(),
+
     commissions: z.number().min(0).default(0),
     fees: z.number().min(0).default(0),
     notes: z.string().optional(),
