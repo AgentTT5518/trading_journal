@@ -1,5 +1,6 @@
-import { getDashboardData } from '@/features/dashboard/services/queries';
+import { getDashboardData, getMoodHeatmapData } from '@/features/dashboard/services/queries';
 import { getSettings } from '@/features/settings/services/queries';
+import { MoodHeatmap } from '@/features/dashboard/components/mood-heatmap';
 import { PageHeader } from '@/shared/components/page-header';
 import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
@@ -42,7 +43,11 @@ function getDateRange(range?: string): { from?: string; to?: string } {
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = await searchParams;
   const dateRange = getDateRange(params.range);
-  const [data, settings] = await Promise.all([getDashboardData(dateRange), getSettings()]);
+  const [data, settings, moodData] = await Promise.all([
+    getDashboardData(dateRange),
+    getSettings(),
+    getMoodHeatmapData(),
+  ]);
   const { summary } = data;
 
   const pnlTrend =
@@ -183,6 +188,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </Card>
         </>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Mood Heatmap</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MoodHeatmap data={moodData} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

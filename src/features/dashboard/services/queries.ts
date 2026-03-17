@@ -1,3 +1,6 @@
+import { db } from '@/lib/db';
+import { journalEntries } from '@/lib/db/schema';
+import { gte, desc } from 'drizzle-orm';
 import { getTrades } from '@/features/trades/services/queries';
 import type { TradeWithCalculations } from '@/features/trades/types';
 import type {
@@ -10,6 +13,7 @@ import type {
   RMultipleStats,
   RMultipleBucket,
   DashboardFilterOptions,
+  MoodHeatmapDay,
 } from '../types';
 import { log } from '../logger';
 
@@ -274,6 +278,37 @@ export async function getDashboardData(
     return computeDashboardMetrics(trades, options);
   } catch (error) {
     log.error('Failed to fetch dashboard data', error as Error);
+    throw error;
+  }
+}
+
+export async function getMoodHeatmapData(): Promise<MoodHeatmapDay[]> {
+  try {
+    const now = new Date();
+    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const fromDate = twoMonthsAgo.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    const rows = await db
+      .select({
+        date: journalEntries.date,
+        mood: journalEntries.mood,
+        createdAt: journalEntries.createdAt,
+      })
+      .from(journalEntries)
+      .where(gte(journalEntries.date, fromDate))
+      .orderBy(desc(journalEntries.createdAt));
+
+    // Filter to entries that have a mood value, then take last entry per day
+    const moodByDate = new Map<string, number>();
+    for (const row of rows) {
+      if (row.mood != null && !moodByDate.has(row.date)) {
+        moodByDate.set(row.date, row.mood);
+      }
+    }
+
+    return Array.from(moodByDate.entries()).map(([date, mood]) => ({ date, mood }));
+  } catch (error) {
+    log.error('Failed to fetch mood heatmap data', error as Error);
     throw error;
   }
 }
