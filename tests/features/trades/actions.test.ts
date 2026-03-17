@@ -163,8 +163,8 @@ describe('createTrade — no commissions or fees', () => {
     mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
   });
 
-  it('uses 0 when commissions and fees are absent (lines 36-37: falsy :0 branches)', async () => {
-    // Covers raw.commissions ? ... : 0 and raw.fees ? ... : 0 — the :0 fallback branches
+  it('uses 0 when commissions and fees are absent', async () => {
+    // Covers num('commissions') ?? 0 and num('fees') ?? 0 — absent key → undefined → ?? 0
     const fd = makeFormData({
       assetClass: 'stock',
       ticker: 'MSFT',
@@ -187,10 +187,9 @@ describe('createTrade — all optional numeric fields', () => {
     mockInsert.mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
   });
 
-  it('parses option trade with all optional fields (covers truthy branches in parseTradeFormData)', async () => {
-    // Covers truthy branches for: exitPrice, exitReason, optionType, strike, expiry,
-    // contracts, contractMultiplier, delta, gamma, theta, vega, iv, ivRank,
-    // spreadId, spreadType, and bool('true') branch
+  it('parses option trade with all optional fields', async () => {
+    // Covers num() with non-zero values for: exitPrice, strike, contracts, contractMultiplier,
+    // delta, gamma, theta, vega, iv, ivRank, and bool('true') branch
     const fd = makeFormData({
       assetClass: 'option',
       ticker: 'AAPL',
@@ -221,10 +220,9 @@ describe('createTrade — all optional numeric fields', () => {
     expect(result.success).toBe(true);
   });
 
-  it('parses crypto trade with all optional fields (covers crypto truthy branches)', async () => {
-    // Covers truthy branches for: exchange, tradingPair, makerFee, takerFee,
-    // networkFee, fundingRate, leverage, liquidationPrice, marketCapCategory,
-    // tokenType, btcDominance, btcCorrelation
+  it('parses crypto trade with all optional fields', async () => {
+    // Covers num() with non-zero values for: makerFee, takerFee, networkFee,
+    // fundingRate, leverage, liquidationPrice, btcDominance, btcCorrelation
     const fd = makeFormData({
       assetClass: 'crypto',
       ticker: 'BTC',
@@ -248,6 +246,43 @@ describe('createTrade — all optional numeric fields', () => {
     });
     const result = await createTrade(initialState, fd);
     expect(result.success).toBe(true);
+  });
+
+  it('stores 0 for optional numeric fields when explicitly set to zero', async () => {
+    // Regression: old num() used truthiness check so "0" → undefined (silently dropped).
+    // Fixed: num() now uses strict empty/undefined check so "0" → 0.
+    const mockValues = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: mockValues });
+
+    const fd = makeFormData({
+      assetClass: 'option',
+      ticker: 'AAPL',
+      direction: 'long',
+      entryDate: '2026-01-15T09:30',
+      entryPrice: '2.00',
+      positionSize: '1',
+      orderType: 'limit',
+      optionType: 'call',
+      strike: '150',
+      expiry: '2026-02-21',
+      contracts: '10',
+      delta: '0',            // deep ITM/OTM delta can be 0
+      theta: '0',            // 0 theta is valid
+      fundingRate: '0',      // 0 funding rate is valid
+      btcCorrelation: '0',   // 0 correlation is valid (range -1..1)
+      distanceFrom50ma: '0', // price exactly at the MA
+      commissions: '0',      // explicit 0 commission
+    });
+    const result = await createTrade(initialState, fd);
+
+    expect(result.success).toBe(true);
+    const row = mockValues.mock.calls[0][0];
+    expect(row.delta).toBe(0);
+    expect(row.theta).toBe(0);
+    expect(row.fundingRate).toBe(0);
+    expect(row.btcCorrelation).toBe(0);
+    expect(row.distanceFrom50ma).toBe(0);
+    expect(row.commissions).toBe(0);
   });
 });
 

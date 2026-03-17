@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -56,12 +57,19 @@ export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProp
     }
   }, [state, router]);
 
+  // Prevent React 19's automatic form reset on every action call (including validation failures).
+  // Using onSubmit + e.preventDefault() keeps uncontrolled input values intact when errors occur.
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    formAction(new FormData(e.currentTarget));
+  }
+
   const isOption = trade.assetClass === 'option';
   const isCrypto = trade.assetClass === 'crypto';
   const hasExitLegs = trade.exitLegs.length > 0;
 
   return (
-    <form action={formAction}>
+    <form onSubmit={handleSubmit}>
       <Tabs defaultValue="trade">
         <TabsList>
           <TabsTrigger value="trade">Trade</TabsTrigger>
