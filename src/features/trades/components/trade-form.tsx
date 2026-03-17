@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { createTrade } from '../services/actions';
+import { PositionSizeSimulator } from './position-size-simulator';
 import { TagSelector } from '@/features/playbooks/components/tag-selector';
 import type { Tag } from '@/features/playbooks/types';
 import type { ActionState } from '../types';
@@ -63,6 +64,7 @@ export function TradeForm({ tags }: TradeFormProps) {
       <Tabs defaultValue="trade">
         <TabsList>
           <TabsTrigger value="trade">Trade</TabsTrigger>
+          <TabsTrigger value="simulation">Simulation</TabsTrigger>
           <TabsTrigger value="context">Context</TabsTrigger>
           <TabsTrigger value="psychology">Psychology</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
@@ -195,6 +197,47 @@ export function TradeForm({ tags }: TradeFormProps) {
                       {state.errors.positionSize[0]}
                     </p>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Risk Management */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Risk Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="plannedStopLoss">Stop Loss</Label>
+                    <Input
+                      id="plannedStopLoss"
+                      name="plannedStopLoss"
+                      type="number"
+                      step="0.0001"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plannedTarget1">Target Take Profit</Label>
+                    <Input
+                      id="plannedTarget1"
+                      name="plannedTarget1"
+                      type="number"
+                      step="0.0001"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invalidationLevel">Invalidation Level</Label>
+                    <Input
+                      id="invalidationLevel"
+                      name="invalidationLevel"
+                      type="number"
+                      step="0.0001"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -500,6 +543,11 @@ export function TradeForm({ tags }: TradeFormProps) {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* ── Simulation Tab ── */}
+        <TabsContent value="simulation">
+          <PositionSizeSimulator />
         </TabsContent>
 
         {/* ── Context Tab ── */}

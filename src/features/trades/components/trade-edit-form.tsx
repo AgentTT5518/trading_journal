@@ -200,6 +200,50 @@ export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProp
               </CardContent>
             </Card>
 
+            {/* Risk Management */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Risk Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="plannedStopLoss">Stop Loss</Label>
+                    <Input
+                      id="plannedStopLoss"
+                      name="plannedStopLoss"
+                      type="number"
+                      step="0.0001"
+                      placeholder="0.00"
+                      defaultValue={trade.plannedStopLoss ?? ''}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plannedTarget1">Target Take Profit</Label>
+                    <Input
+                      id="plannedTarget1"
+                      name="plannedTarget1"
+                      type="number"
+                      step="0.0001"
+                      placeholder="0.00"
+                      defaultValue={trade.plannedTarget1 ?? ''}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="invalidationLevel">Invalidation Level</Label>
+                    <Input
+                      id="invalidationLevel"
+                      name="invalidationLevel"
+                      type="number"
+                      step="0.0001"
+                      placeholder="0.00"
+                      defaultValue={trade.invalidationLevel ?? ''}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Options section */}
             {isOption && (
               <Card className="md:col-span-2">

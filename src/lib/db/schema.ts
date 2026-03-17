@@ -34,6 +34,7 @@ export const trades = sqliteTable('trades', {
   plannedTarget2: real('planned_target_2'),
   plannedTarget3: real('planned_target_3'),
   riskRewardPlanned: real('risk_reward_planned'),
+  invalidationLevel: real('invalidation_level'),
 
   // Financials
   commissions: real('commissions').default(0),

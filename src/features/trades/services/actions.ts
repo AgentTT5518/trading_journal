@@ -36,6 +36,11 @@ function parseTradeFormData(raw: Record<string, FormDataEntryValue>) {
     exitDate: nullable('exitDate'),
     exitPrice: num('exitPrice'),
     exitReason: nullable('exitReason'),
+    // Risk parameters
+    plannedStopLoss: num('plannedStopLoss'),
+    plannedTarget1: num('plannedTarget1'),
+    invalidationLevel: num('invalidationLevel'),
+    riskRewardPlanned: num('riskRewardPlanned'),
     // Fees
     commissions: num('commissions') ?? 0,
     fees: num('fees') ?? 0,
