@@ -67,21 +67,21 @@ export async function syncTradeTags(
   tagIds: string[]
 ): Promise<void> {
   try {
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       // Delete all existing trade tags for this trade
-      await tx.delete(tradeTags).where(eq(tradeTags.tradeId, tradeId));
+      tx.delete(tradeTags).where(eq(tradeTags.tradeId, tradeId)).run();
 
       // Insert new trade tags
       if (tagIds.length > 0) {
         const now = new Date().toISOString();
-        await tx.insert(tradeTags).values(
+        tx.insert(tradeTags).values(
           tagIds.map((tagId) => ({
             id: generateId(),
             tradeId,
             tagId,
             createdAt: now,
           }))
-        );
+        ).run();
       }
     });
 
