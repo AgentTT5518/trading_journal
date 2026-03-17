@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
+  CalendarDays,
   ArrowLeftRight,
   BookOpen,
   BookMarked,
@@ -16,6 +17,7 @@ import type { LucideIcon } from 'lucide-react';
 
 const navItems: { href: string; label: string; enabled: boolean; icon: LucideIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', enabled: true, icon: LayoutDashboard },
+  { href: '/analytics', label: 'Analytics', enabled: true, icon: CalendarDays },
   { href: '/trades', label: 'Trades', enabled: true, icon: ArrowLeftRight },
   { href: '/journal', label: 'Journal', enabled: true, icon: BookOpen },
   { href: '/playbooks', label: 'Playbooks', enabled: true, icon: BookMarked },
