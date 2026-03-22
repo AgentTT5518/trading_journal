@@ -4,6 +4,8 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
 import { ReviewList } from '@/features/reviews/components/review-list';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ReviewsPage() {
   const reviews = await getReviews();
 

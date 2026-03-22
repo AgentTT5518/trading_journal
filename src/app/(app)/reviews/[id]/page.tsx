@@ -6,6 +6,8 @@ import { LinkButton } from '@/shared/components/link-button';
 import { Button } from '@/components/ui/button';
 import { ReviewDetail } from '@/features/reviews/components/review-detail';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ReviewDetailPage({
   params,
 }: {

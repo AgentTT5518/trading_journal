@@ -3,6 +3,8 @@ import { getReviewById } from '@/features/reviews/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { ReviewEditForm } from '@/features/reviews/components/review-edit-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ReviewEditPage({
   params,
 }: {

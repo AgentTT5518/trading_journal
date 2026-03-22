@@ -2,6 +2,8 @@ import { getTags } from '@/features/playbooks/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { PlaybookForm } from '@/features/playbooks/components/playbook-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewPlaybookPage() {
   const tags = await getTags();
 

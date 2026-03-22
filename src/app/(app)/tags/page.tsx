@@ -3,6 +3,8 @@ import { TagManager } from '@/features/playbooks/components/tag-manager';
 import { getTagsWithTradeCount } from '@/features/playbooks/services/queries';
 import { seedPredefinedTags } from '@/features/playbooks/services/seed-tags';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TagsPage() {
   // Auto-seed on first visit (idempotent)
   await seedPredefinedTags();

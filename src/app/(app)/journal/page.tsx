@@ -4,6 +4,8 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
 import { JournalList } from '@/features/journal/components/journal-list';
 
+export const dynamic = 'force-dynamic';
+
 export default async function JournalPage() {
   const entries = await getJournalEntries();
 

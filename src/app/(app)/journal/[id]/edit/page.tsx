@@ -3,6 +3,8 @@ import { getJournalEntryById } from '@/features/journal/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { JournalEditForm } from '@/features/journal/components/journal-edit-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function JournalEditPage({
   params,
 }: {

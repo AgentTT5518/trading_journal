@@ -3,6 +3,8 @@ import { getJournalEntryById } from '@/features/journal/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { JournalDetail } from '@/features/journal/components/journal-detail';
 
+export const dynamic = 'force-dynamic';
+
 const categoryLabels: Record<string, string> = {
   pre_market: 'Pre-Market',
   post_market: 'Post-Market',

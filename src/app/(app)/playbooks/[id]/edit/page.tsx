@@ -3,6 +3,8 @@ import { getPlaybookById, getTags } from '@/features/playbooks/services/queries'
 import { PageHeader } from '@/shared/components/page-header';
 import { PlaybookEditForm } from '@/features/playbooks/components/playbook-edit-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function EditPlaybookPage({
   params,
 }: {

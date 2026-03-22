@@ -11,6 +11,8 @@ import { PlaybookPerformance } from '@/features/analytics/components/playbook-pe
 import { PageHeader } from '@/shared/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsPage() {
   const [heatmapData, moodData, analytics, settings] = await Promise.all([
     getHeatmapData(),

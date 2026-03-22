@@ -7,6 +7,8 @@ import { LinkButton } from '@/shared/components/link-button';
 import { getTradeTagsForTrade } from '@/features/playbooks/services/queries';
 import { getScreenshotsForTrade } from '@/features/screenshots/services/queries';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TradeDetailPage({
   params,
 }: {

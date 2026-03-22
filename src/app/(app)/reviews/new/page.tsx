@@ -2,6 +2,8 @@ import { PageHeader } from '@/shared/components/page-header';
 import { ReviewForm } from '@/features/reviews/components/review-form';
 import { getTradesByDateRange } from '@/features/reviews/services/queries';
 
+export const dynamic = 'force-dynamic';
+
 export default function NewReviewPage() {
   return (
     <div className="space-y-6">
