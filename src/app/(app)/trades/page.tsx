@@ -1,5 +1,6 @@
 import { getTrades } from '@/features/trades/services/queries';
 import { getSettings } from '@/features/settings/services/queries';
+import { getTags, getAllTradeTagMap } from '@/features/playbooks/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
@@ -31,7 +32,24 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
   const params = await searchParams;
   const dateFilter = params.date ?? null;
 
-  const [allTrades, settings] = await Promise.all([getTrades(), getSettings()]);
+  const [allTrades, settings, allTags, tradeTagMapRaw] = await Promise.all([
+    getTrades(),
+    getSettings(),
+    getTags(),
+    getAllTradeTagMap(),
+  ]);
+
+  // Convert Map to plain object for client component serialization
+  const tradeTagMap: Record<string, string[]> = {};
+  for (const [tradeId, tagIds] of tradeTagMapRaw) {
+    tradeTagMap[tradeId] = tagIds;
+  }
+
+  // Only include tags that are actually linked to at least one trade
+  const usedTagIds = new Set(Object.values(tradeTagMap).flat());
+  const tags = allTags
+    .filter((t) => usedTagIds.has(t.id))
+    .map((t) => ({ id: t.id, name: t.name, category: t.category }));
 
   const trades = dateFilter ? filterByExitDate(allTrades, dateFilter) : allTrades;
 
@@ -55,6 +73,8 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
           trades={trades}
           dateFormat={settings.dateFormat}
           dateFilter={dateFilter}
+          tags={tags}
+          tradeTagMap={tradeTagMap}
         />
       )}
     </div>

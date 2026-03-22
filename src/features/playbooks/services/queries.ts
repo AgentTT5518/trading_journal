@@ -84,6 +84,31 @@ export async function getTagIdsForTrade(tradeId: string): Promise<string[]> {
   }
 }
 
+/**
+ * Returns a map of tradeId → tagId[] for all trade-tag associations.
+ * Used for client-side tag filtering on the trade list.
+ */
+export async function getAllTradeTagMap(): Promise<Map<string, string[]>> {
+  try {
+    const rows = await db
+      .select({ tradeId: tradeTags.tradeId, tagId: tradeTags.tagId })
+      .from(tradeTags);
+    const map = new Map<string, string[]>();
+    for (const row of rows) {
+      const existing = map.get(row.tradeId);
+      if (existing) {
+        existing.push(row.tagId);
+      } else {
+        map.set(row.tradeId, [row.tagId]);
+      }
+    }
+    return map;
+  } catch (error) {
+    log.error('Failed to fetch all trade tag mappings', error as Error);
+    throw error;
+  }
+}
+
 // ─── Playbook Queries ───────────────────────────────────────────────────────
 
 export async function getPlaybooks(): Promise<PlaybookWithTags[]> {

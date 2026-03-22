@@ -55,6 +55,7 @@ Core trade logging — CRUD for trades, P&L calculations, trade list, form, and 
 - [x] Tests passing (114 tests across 5 files)
 - [x] ARCHITECTURE.md Feature Log updated
 - [x] Enhancements V2: TradeFilters + FilterableTradeList (search by ticker, filter by status/asset class)
+- [x] Phase C: Tag-based filtering on trade list (dropdown with category-grouped tags, multi-select, filter chips)
 
 ## Cross-Boundary Edit Log
 | Date | File | Change | Approved By |
@@ -63,3 +64,4 @@ Core trade logging — CRUD for trades, P&L calculations, trade list, form, and 
 | 2026-03-13 | `ARCHITECTURE.md` | Updated component map, data model, API endpoints, key patterns, feature log for Phase 2 | Plan pre-approved |
 | 2026-03-16 | `src/app/(app)/trades/page.tsx` | Replaced TradeList with FilterableTradeList | Plan pre-approved |
 | 2026-03-16 | `ARCHITECTURE.md` | Added FilterableTradeList + TradeFilters to component map | Plan pre-approved |
+| 2026-03-22 | `src/app/(app)/trades/page.tsx` | Added tags + tradeTagMap fetching and pass-through to FilterableTradeList | Plan pre-approved |
