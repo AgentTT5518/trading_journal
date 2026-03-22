@@ -4,6 +4,8 @@ import { EmptyState } from '@/shared/components/empty-state';
 import { LinkButton } from '@/shared/components/link-button';
 import { PlaybookList } from '@/features/playbooks/components/playbook-list';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PlaybooksPage() {
   const playbooks = await getPlaybooksWithMetrics();
 

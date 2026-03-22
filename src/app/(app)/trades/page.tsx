@@ -7,6 +7,8 @@ import { LinkButton } from '@/shared/components/link-button';
 import { FilterableTradeList } from '@/features/trades/components/filterable-trade-list';
 import type { TradeWithCalculations } from '@/features/trades/types';
 
+export const dynamic = 'force-dynamic';
+
 type TradesPageProps = {
   searchParams: Promise<{ date?: string }>;
 };

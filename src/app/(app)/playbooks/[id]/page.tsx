@@ -6,6 +6,8 @@ import { LinkButton } from '@/shared/components/link-button';
 import { Button } from '@/components/ui/button';
 import { PlaybookDetail } from '@/features/playbooks/components/playbook-detail';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PlaybookDetailPage({
   params,
 }: {

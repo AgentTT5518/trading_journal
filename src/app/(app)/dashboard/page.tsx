@@ -11,6 +11,8 @@ import { DateRangeFilter } from '@/features/dashboard/components/date-range-filt
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent } from '@/shared/utils/formatting';
 
+export const dynamic = 'force-dynamic';
+
 type DashboardPageProps = {
   searchParams: Promise<{ range?: string }>;
 };

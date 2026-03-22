@@ -3,6 +3,8 @@ import { TradeForm } from '@/features/trades/components/trade-form';
 import { getTags } from '@/features/playbooks/services/queries';
 import { seedPredefinedTags } from '@/features/playbooks/services/seed-tags';
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewTradePage() {
   await seedPredefinedTags();
   const tags = await getTags();
