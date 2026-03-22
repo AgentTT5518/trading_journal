@@ -22,13 +22,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      # --- Deploy to Vercel ---
-      # Add deploy secrets in GitHub: Settings → Secrets and variables → Actions
-      # Required secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-      # Replace this step with your own deploy target if not using Vercel.
-      - name: Deploy to Vercel
-        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
