@@ -215,6 +215,115 @@ describe('computeDailyPnl', () => {
     expect(march15!.tradeCount).toBe(1);
   });
 
+  it('applies short direction multiplier and option contract multiplier on exit legs', () => {
+    const leg = makeExitLeg({
+      id: 'leg1',
+      exitDate: '2024-03-15T10:00:00.000Z',
+      exitPrice: 5,
+      quantity: 10,
+      fees: 25,
+    });
+
+    const trade = makeEnrichedTrade(
+      {
+        assetClass: 'option',
+        direction: 'short',
+        entryPrice: 8,
+        positionSize: 10,
+        contractMultiplier: 100,
+        exitDate: '2024-03-15T10:00:00.000Z',
+        exitPrice: null,
+      },
+      [leg],
+    );
+
+    const result = computeDailyPnl([trade]);
+    const march15 = result.get('2024-03-15');
+    expect(march15).toBeDefined();
+    // short: dirMultiplier = -1
+    // option: multiplier = 100
+    // legPnl = (5 - 8) * 10 * 100 * (-1) - 25 = 3000 - 25 = 2975
+    expect(march15!.netPnl).toBe(2975);
+  });
+
+  it('aggregates multiple exit legs on the same date', () => {
+    const leg1 = makeExitLeg({
+      id: 'leg1',
+      exitDate: '2024-03-15T10:00:00.000Z',
+      exitPrice: 110,
+      quantity: 50,
+      fees: 0,
+    });
+    const leg2 = makeExitLeg({
+      id: 'leg2',
+      exitDate: '2024-03-15T14:00:00.000Z',
+      exitPrice: 120,
+      quantity: 50,
+      fees: 0,
+    });
+
+    const trade = makeEnrichedTrade(
+      {
+        exitDate: '2024-03-15T14:00:00.000Z',
+        exitPrice: null,
+        positionSize: 100,
+      },
+      [leg1, leg2],
+    );
+
+    const result = computeDailyPnl([trade]);
+    expect(result.size).toBe(1);
+
+    const march15 = result.get('2024-03-15');
+    expect(march15).toBeDefined();
+    // leg1: (110 - 100) * 50 = 500
+    // leg2: (120 - 100) * 50 = 1000
+    // total: 1500
+    expect(march15!.netPnl).toBe(1500);
+    expect(march15!.tradeCount).toBe(2);
+  });
+
+  it('uses default contractMultiplier of 100 when null on option trade', () => {
+    const leg = makeExitLeg({
+      exitDate: '2024-03-15T10:00:00.000Z',
+      exitPrice: 10,
+      quantity: 5,
+      fees: null as unknown as number,
+    });
+
+    const trade = makeEnrichedTrade(
+      {
+        assetClass: 'option',
+        direction: 'long',
+        entryPrice: 8,
+        positionSize: 5,
+        contractMultiplier: null as unknown as number,
+        exitDate: '2024-03-15T10:00:00.000Z',
+        exitPrice: null,
+      },
+      [leg],
+    );
+
+    const result = computeDailyPnl([trade]);
+    const entry = result.get('2024-03-15');
+    expect(entry).toBeDefined();
+    // (10 - 8) * 5 * 100 * 1 - 0 = 1000
+    expect(entry!.netPnl).toBe(1000);
+  });
+
+  it('handles closed trade with null exitDate (edge case)', () => {
+    // Manually create a trade that's "closed" with null exitDate but has netPnl
+    // This tests the exitDate null-check branch (line 50)
+    const trade = makeEnrichedTrade({
+      exitDate: null,
+      exitPrice: 110,
+    });
+    // Force status to closed for this edge case test
+    const forcedTrade = { ...trade, status: 'closed' as const, netPnl: 1000 };
+    const result = computeDailyPnl([forcedTrade]);
+    expect(result.size).toBe(0); // exitDate is null, so skipped
+  });
+
   it('excludes partial (not fully closed) trades', () => {
     // A trade with exit legs that don't cover the full position → status = 'partial'
     const leg = makeExitLeg({
@@ -315,6 +424,14 @@ describe('buildHeatmapData', () => {
     const result = buildHeatmapData([], new Date(2024, 2, 31));
     expect(result.maxProfit).toBe(0);
     expect(result.maxLoss).toBe(0);
+  });
+
+  it('defaults to current date when no referenceDate is provided', () => {
+    const result = buildHeatmapData([]);
+    const now = new Date();
+    const currentMonth = result.months[1];
+    expect(currentMonth.year).toBe(now.getFullYear());
+    expect(currentMonth.month).toBe(now.getMonth());
   });
 
   it('includes leading empty cells for day-of-week alignment', () => {

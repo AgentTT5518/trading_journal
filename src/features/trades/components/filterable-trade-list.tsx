@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { TradeFilters } from './trade-filters';
+import type { TagInfo } from './trade-filters';
 import { TradeList } from './trade-list';
 import type { TradeWithCalculations } from '../types';
 
@@ -12,6 +13,9 @@ type FilterableTradeListProps = {
   dateFormat?: string;
   /** YYYY-MM-DD — when set, shows a banner indicating the active date filter */
   dateFilter?: string | null;
+  tags?: TagInfo[];
+  /** Map of tradeId → tagId[] */
+  tradeTagMap?: Record<string, string[]>;
 };
 
 function formatDateLabel(date: string): string {
@@ -28,6 +32,8 @@ export function FilterableTradeList({
   trades,
   dateFormat,
   dateFilter,
+  tags,
+  tradeTagMap,
 }: FilterableTradeListProps) {
   const [filtered, setFiltered] = useState(trades);
 
@@ -51,7 +57,7 @@ export function FilterableTradeList({
           </Link>
         </div>
       )}
-      <TradeFilters trades={trades} onFilter={setFiltered} />
+      <TradeFilters trades={trades} onFilter={setFiltered} tags={tags} tradeTagMap={tradeTagMap} />
       {filtered.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">
           {dateFilter

@@ -64,7 +64,7 @@ export function JournalDetail({ entry }: JournalDetailProps) {
           )}
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" render={<Link href={`/journal/${entry.id}/edit`} />}>
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/journal/${entry.id}/edit`} />}>
             Edit
           </Button>
           <Button variant="destructive" size="sm" onClick={handleDelete}>
