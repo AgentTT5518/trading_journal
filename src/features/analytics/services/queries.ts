@@ -342,7 +342,7 @@ export function computeRMultipleBuckets(trades: TradeWithCalculations[]): RMulti
 
 /**
  * Sharpe ratio: mean daily return / std deviation of daily returns.
- * Uses risk-free rate of 0 (simplification for trading journal).
+ * Assumes zero riskless return (simplified for solo trading journal).
  */
 export function computeSharpeRatio(trades: TradeWithCalculations[]): number | null {
   const closed = getClosedTrades(trades);
