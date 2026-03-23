@@ -11,6 +11,31 @@ export type ReviewWithTradeCount = Review & {
   tradeCount: number;
 };
 
+export type TradeHighlight = {
+  id: string;
+  ticker: string;
+  direction: string;
+  netPnl: number;
+};
+
+export type TickerBreakdown = {
+  ticker: string;
+  tradeCount: number;
+  winCount: number;
+  winRate: number;
+  totalPnl: number;
+  avgPnl: number;
+};
+
+export type TradeSummary = {
+  id: string;
+  ticker: string;
+  direction: string;
+  entryDate: string;
+  exitDate: string | null;
+  netPnl: number;
+};
+
 export type ReviewMetrics = {
   tradeCount: number;
   winCount: number;
@@ -20,9 +45,14 @@ export type ReviewMetrics = {
   avgPnl: number | null;
   bestPnl: number | null;
   worstPnl: number | null;
+  bestTrade: TradeHighlight | null;
+  worstTrade: TradeHighlight | null;
+  profitFactor: number | null;
+  tickerBreakdown: TickerBreakdown[];
 };
 
 export type ReviewWithMetrics = Review & {
   metrics: ReviewMetrics;
   tradeIds: string[];
+  tradeSummaries: TradeSummary[];
 };

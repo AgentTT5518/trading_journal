@@ -8,7 +8,7 @@ interface ReviewMetricsSummaryProps {
 
 export function ReviewMetricsSummary({ metrics }: ReviewMetricsSummaryProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <Card>
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">Trades</p>
@@ -50,6 +50,14 @@ export function ReviewMetricsSummary({ metrics }: ReviewMetricsSummaryProps) {
             {metrics.worstPnl !== null ? (
               <span className="text-red-600">{formatCurrency(metrics.worstPnl)}</span>
             ) : '—'}
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground">Profit Factor</p>
+          <p className="text-2xl font-bold">
+            {metrics.profitFactor !== null ? metrics.profitFactor.toFixed(2) : '—'}
           </p>
         </CardContent>
       </Card>

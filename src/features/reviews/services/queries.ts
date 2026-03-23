@@ -5,7 +5,7 @@ import { reviews, reviewTrades, trades } from '@/lib/db/schema';
 import { eq, sql, desc, and, gte, lte } from 'drizzle-orm';
 import { log } from '../logger';
 import { computeReviewMetrics } from './metrics';
-import type { ReviewWithTradeCount, ReviewWithMetrics } from '../types';
+import type { ReviewWithTradeCount, ReviewWithMetrics, TradeSummary } from '../types';
 
 export async function getReviews(): Promise<ReviewWithTradeCount[]> {
   try {
@@ -51,11 +51,16 @@ export async function getReviewById(id: string): Promise<ReviewWithMetrics | nul
       .where(eq(reviewTrades.reviewId, id));
     const tradeIds = rtRows.map((r) => r.tradeId);
 
-    // Get trade data for metrics
+    // Get trade data for metrics and summaries
     let metrics = computeReviewMetrics([]);
+    let tradeSummaries: TradeSummary[] = [];
+
     if (tradeIds.length > 0) {
       const tradeRows = await db
         .select({
+          id: trades.id,
+          ticker: trades.ticker,
+          entryDate: trades.entryDate,
           entryPrice: trades.entryPrice,
           exitPrice: trades.exitPrice,
           exitDate: trades.exitDate,
@@ -65,12 +70,30 @@ export async function getReviewById(id: string): Promise<ReviewWithMetrics | nul
           fees: trades.fees,
         })
         .from(trades)
-        .where(sql`${trades.id} IN (${sql.join(tradeIds.map(id => sql`${id}`), sql`, `)})`);
+        .where(sql`${trades.id} IN (${sql.join(tradeIds.map(id => sql`${id}`), sql`, `)})`)
+        .orderBy(trades.entryDate);
 
       metrics = computeReviewMetrics(tradeRows);
+
+      tradeSummaries = tradeRows.map((t) => {
+        const gross = t.exitPrice != null
+          ? t.direction === 'long'
+            ? (t.exitPrice - t.entryPrice) * t.positionSize
+            : (t.entryPrice - t.exitPrice) * t.positionSize
+          : 0;
+        const net = gross - (t.commissions ?? 0) - (t.fees ?? 0);
+        return {
+          id: t.id,
+          ticker: t.ticker,
+          direction: t.direction,
+          entryDate: t.entryDate,
+          exitDate: t.exitDate,
+          netPnl: Math.round(net * 100) / 100,
+        };
+      });
     }
 
-    return { ...review, metrics, tradeIds };
+    return { ...review, metrics, tradeIds, tradeSummaries };
   } catch (error) {
     log.error('Failed to fetch review by ID', error as Error, { reviewId: id });
     throw error;
