@@ -2,6 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ReviewMetricsSummary } from './review-metrics-summary';
+import { ReviewBestWorstTrades } from './review-best-worst-trades';
+import { ReviewTickerBreakdown } from './review-ticker-breakdown';
+import { ReviewTradeSummary } from './review-trade-summary';
 import type { ReviewWithMetrics } from '../types';
 
 const gradeColors: Record<string, string> = {
@@ -44,6 +47,20 @@ export function ReviewDetail({ review }: ReviewDetailProps) {
 
       {/* Metrics */}
       <ReviewMetricsSummary metrics={review.metrics} />
+
+      {/* Best & Worst Trades */}
+      {review.metrics.bestTrade && review.metrics.worstTrade && (
+        <ReviewBestWorstTrades
+          bestTrade={review.metrics.bestTrade}
+          worstTrade={review.metrics.worstTrade}
+        />
+      )}
+
+      {/* P&L by Ticker */}
+      <ReviewTickerBreakdown breakdown={review.metrics.tickerBreakdown} />
+
+      {/* Trade Summary Table */}
+      <ReviewTradeSummary trades={review.tradeSummaries} />
 
       {/* Notes & Lessons */}
       <div className="grid gap-4 sm:grid-cols-2">
