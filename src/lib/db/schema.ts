@@ -176,6 +176,27 @@ export const tradeTags = sqliteTable('trade_tags', {
 });
 
 // ============================================================
+// PLAYBOOK RULES (Rule Adherence)
+// ============================================================
+
+export const playbookRules = sqliteTable('playbook_rules', {
+  id: text('id').primaryKey(),
+  playbookId: text('playbook_id').notNull().references(() => playbooks.id, { onDelete: 'cascade' }),
+  ruleText: text('rule_text').notNull(),
+  ruleType: text('rule_type', { enum: ['entry', 'exit', 'sizing'] }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+});
+
+export const tradeRuleChecks = sqliteTable('trade_rule_checks', {
+  id: text('id').primaryKey(),
+  tradeId: text('trade_id').notNull().references(() => trades.id, { onDelete: 'cascade' }),
+  ruleId: text('rule_id').notNull().references(() => playbookRules.id, { onDelete: 'cascade' }),
+  followed: integer('followed', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+});
+
+// ============================================================
 // SCREENSHOTS (Phase 6)
 // ============================================================
 
@@ -281,6 +302,7 @@ export const tradesRelations = relations(trades, ({ many }) => ({
   screenshots: many(screenshots),
   reviewTrades: many(reviewTrades),
   journalTrades: many(journalTrades),
+  ruleChecks: many(tradeRuleChecks),
 }));
 
 export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
@@ -289,6 +311,16 @@ export const exitLegsRelations = relations(exitLegs, ({ one }) => ({
 
 export const playbooksRelations = relations(playbooks, ({ many }) => ({
   tags: many(tags),
+  rules: many(playbookRules),
+}));
+
+export const playbookRulesRelations = relations(playbookRules, ({ one }) => ({
+  playbook: one(playbooks, { fields: [playbookRules.playbookId], references: [playbooks.id] }),
+}));
+
+export const tradeRuleChecksRelations = relations(tradeRuleChecks, ({ one }) => ({
+  trade: one(trades, { fields: [tradeRuleChecks.tradeId], references: [trades.id] }),
+  rule: one(playbookRules, { fields: [tradeRuleChecks.ruleId], references: [playbookRules.id] }),
 }));
 
 export const tagsRelations = relations(tags, ({ one, many }) => ({

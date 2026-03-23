@@ -30,12 +30,14 @@ interface TagSelectorProps {
   tags: Tag[];
   selectedTagIds: string[];
   name?: string;
+  onSelectionChange?: (selectedIds: string[]) => void;
 }
 
 export function TagSelector({
   tags,
   selectedTagIds: initialSelectedIds,
   name = 'tagIds',
+  onSelectionChange,
 }: TagSelectorProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(initialSelectedIds));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -52,6 +54,7 @@ export function TagSelector({
       const next = new Set(prev);
       if (next.has(tagId)) next.delete(tagId);
       else next.add(tagId);
+      onSelectionChange?.(Array.from(next));
       return next;
     });
   }
