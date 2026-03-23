@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useTransition } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -20,7 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { updateTrade } from '../services/actions';
 import { TagSelector } from '@/features/playbooks/components/tag-selector';
+import { TradeRulesTab } from '@/features/rule-adherence/components/trade-rules-tab';
 import type { Tag } from '@/features/playbooks/types';
+import type { PlaybookRule } from '@/features/rule-adherence/types';
 import type { ActionState, TradeWithCalculations } from '../types';
 
 /** Convert an ISO date string (or datetime-local string) to datetime-local input format */
@@ -41,13 +43,16 @@ interface TradeEditFormProps {
   trade: TradeWithCalculations;
   tags: Tag[];
   selectedTagIds: string[];
+  rulesByPlaybook?: Record<string, PlaybookRule[]>;
+  checkedRuleIds?: string[];
 }
 
-export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProps) {
+export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {}, checkedRuleIds = [] }: TradeEditFormProps) {
   const router = useRouter();
   const updateTradeWithId = updateTrade.bind(null, trade.id);
   const [state, formAction] = useActionState(updateTradeWithId, initialState);
   const [isPending, startTransition] = useTransition();
+  const [currentTagIds, setCurrentTagIds] = useState<string[]>(selectedTagIds);
 
   useEffect(() => {
     if (state.success && state.data) {
@@ -80,6 +85,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProp
           <TabsTrigger value="context">Context</TabsTrigger>
           <TabsTrigger value="psychology">Psychology</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
+          <TabsTrigger value="rules">Rules</TabsTrigger>
         </TabsList>
 
         {/* ── Trade Tab ── */}
@@ -914,9 +920,19 @@ export function TradeEditForm({ trade, tags, selectedTagIds }: TradeEditFormProp
               <CardTitle>Tags</CardTitle>
             </CardHeader>
             <CardContent>
-              <TagSelector tags={tags} selectedTagIds={selectedTagIds} />
+              <TagSelector tags={tags} selectedTagIds={selectedTagIds} onSelectionChange={setCurrentTagIds} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Rules Tab ── */}
+        <TabsContent value="rules" keepMounted>
+          <TradeRulesTab
+            rulesByPlaybook={rulesByPlaybook}
+            tags={tags}
+            selectedTagIds={currentTagIds}
+            initialCheckedRuleIds={checkedRuleIds}
+          />
         </TabsContent>
       </Tabs>
 

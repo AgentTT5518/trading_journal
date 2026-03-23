@@ -21,7 +21,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { createTrade } from '../services/actions';
 import { PositionSizeSimulator } from './position-size-simulator';
 import { TagSelector } from '@/features/playbooks/components/tag-selector';
+import { TradeRulesTab } from '@/features/rule-adherence/components/trade-rules-tab';
 import type { Tag } from '@/features/playbooks/types';
+import type { PlaybookRule } from '@/features/rule-adherence/types';
 import type { ActionState } from '../types';
 
 const initialState: ActionState<{ id: string }> = { success: false };
@@ -36,13 +38,15 @@ const positionSizeLabel: Record<AssetClass, string> = {
 
 interface TradeFormProps {
   tags: Tag[];
+  rulesByPlaybook?: Record<string, PlaybookRule[]>;
 }
 
-export function TradeForm({ tags }: TradeFormProps) {
+export function TradeForm({ tags, rulesByPlaybook = {} }: TradeFormProps) {
   const router = useRouter();
   const [state, formAction] = useActionState(createTrade, initialState);
   const [isPending, startTransition] = useTransition();
   const [assetClass, setAssetClass] = useState<AssetClass>('stock');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   // Prevent React 19's automatic form reset on every action call (including validation failures).
   // Using onSubmit + e.preventDefault() keeps uncontrolled input values intact when errors occur.
@@ -72,6 +76,7 @@ export function TradeForm({ tags }: TradeFormProps) {
           <TabsTrigger value="context">Context</TabsTrigger>
           <TabsTrigger value="psychology">Psychology</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
+          <TabsTrigger value="rules">Rules</TabsTrigger>
         </TabsList>
 
         {/* ── Trade Tab ── */}
@@ -861,9 +866,18 @@ export function TradeForm({ tags }: TradeFormProps) {
               <CardTitle>Tags</CardTitle>
             </CardHeader>
             <CardContent>
-              <TagSelector tags={tags} selectedTagIds={[]} />
+              <TagSelector tags={tags} selectedTagIds={[]} onSelectionChange={setSelectedTagIds} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Rules Tab ── */}
+        <TabsContent value="rules" keepMounted>
+          <TradeRulesTab
+            rulesByPlaybook={rulesByPlaybook}
+            tags={tags}
+            selectedTagIds={selectedTagIds}
+          />
         </TabsContent>
       </Tabs>
 

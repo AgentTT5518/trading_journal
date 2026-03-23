@@ -7,6 +7,7 @@ import { generateId } from '@/lib/ids';
 import { tradeInsertSchema, exitLegInsertSchema } from '../validations';
 import { syncTradeTags } from '@/features/playbooks/services/actions';
 import { deleteTradeScreenshotDir } from '@/features/screenshots/services/storage';
+import { saveTradeRuleChecks } from '@/features/rule-adherence/services/actions';
 import { log } from '../logger';
 import type { ActionState } from '../types';
 import { revalidatePath } from 'next/cache';
@@ -148,6 +149,15 @@ export async function createTrade(
       await syncTradeTags(id, tagIds);
     }
 
+    // Save rule checks from form
+    const ruleCheckIds = formData.getAll('ruleChecks').map(String).filter(Boolean);
+    if (ruleCheckIds.length > 0) {
+      await saveTradeRuleChecks(
+        id,
+        ruleCheckIds.map((ruleId) => ({ ruleId, followed: true }))
+      );
+    }
+
     log.info('Trade created', { tradeId: id, ticker: parsed.data.ticker });
     revalidatePath('/trades');
     return { success: true, data: { id } };
@@ -183,6 +193,13 @@ export async function updateTrade(
     // Sync tags from form
     const tagIds = formData.getAll('tagIds').map(String).filter(Boolean);
     await syncTradeTags(id, tagIds);
+
+    // Save rule checks from form (all checked rules are "followed", unchecked are absent)
+    const ruleCheckIds = formData.getAll('ruleChecks').map(String).filter(Boolean);
+    await saveTradeRuleChecks(
+      id,
+      ruleCheckIds.map((ruleId) => ({ ruleId, followed: true }))
+    );
 
     log.info('Trade updated', { tradeId: id, ticker: parsed.data.ticker });
     revalidatePath('/trades');

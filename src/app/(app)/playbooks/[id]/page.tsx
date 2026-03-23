@@ -1,10 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
 import { getPlaybookById } from '@/features/playbooks/services/queries';
 import { deletePlaybook } from '@/features/playbooks/services/actions';
+import { getRulesForPlaybook } from '@/features/rule-adherence/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { LinkButton } from '@/shared/components/link-button';
 import { Button } from '@/components/ui/button';
 import { PlaybookDetail } from '@/features/playbooks/components/playbook-detail';
+import { RuleManager } from '@/features/rule-adherence/components/rule-manager';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +16,10 @@ export default async function PlaybookDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const playbook = await getPlaybookById(id);
+  const [playbook, rules] = await Promise.all([
+    getPlaybookById(id),
+    getRulesForPlaybook(id),
+  ]);
 
   if (!playbook) notFound();
 
@@ -42,6 +47,7 @@ export default async function PlaybookDetailPage({
         }
       />
       <PlaybookDetail playbook={playbook} />
+      <RuleManager playbookId={id} rules={rules} />
     </div>
   );
 }
