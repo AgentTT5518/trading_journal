@@ -1,6 +1,6 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-24 (Added Correlation Analysis, Rule Adherence, Review Auto-population; updated Component Map & Data Model) | Updated by: Claude Code
+> Last updated: 2026-03-24 (Added Goal Tracking Dashboard, Mobile Responsive Polish; updated Component Map & Data Model) | Updated by: Claude Code
 
 ## System Overview
 Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, psychology, analytics, and structured reviews. All core features are complete: Trades (stock/option/crypto with partial exits), Dashboard (with date range filtering and advanced metrics), Journal, Analytics (P&L heatmap + correlation analysis), Playbooks, Tags, Reviews (with auto-populated metrics), Rule Adherence scoring, Screenshots, and Settings.
@@ -239,6 +239,8 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Review Auto-population | 2026-03-24 | Auto-populated review detail with trade summaries, best/worst trades, and per-ticker P&L breakdown for the review period. Enhanced metrics service with ticker-level aggregation. | `src/features/reviews/components/review-best-worst-trades.tsx`, `review-ticker-breakdown.tsx`, `review-trade-summary.tsx` (3 new), `services/metrics.ts` (enhanced), `services/queries.ts` (enhanced). 159 tests |
 | Correlation Analysis | 2026-03-24 | Pearson correlation matrix between trade psychology fields (mood, confidence, FOMO, revenge) and P&L outcomes. Scatter plots for individual field exploration. Auto-generated text insights. Integrated into `/analytics` page. | `src/features/correlation-analysis/` (new feature), `src/app/(app)/analytics/page.tsx` (updated). 333 tests |
 | Rule Adherence | 2026-03-24 | Structured playbook rules (entry/exit/sizing categories) with per-trade checklists. Adherence scoring and P&L correlation analytics. Rule manager CRUD. Integrated into trade form and playbook detail. | `src/features/rule-adherence/` (new feature), `src/lib/db/schema.ts` (+playbookRules, tradeRuleChecks tables), `src/app/(app)/playbooks/[id]/page.tsx`, trade forms updated. 154 tests |
+| Goal Tracking Dashboard | 2026-03-24 | Goals table (monthly_pnl, max_loss, trade_count, win_rate types). Progress computed from trades at query time. Pace-based alerts (behind pace for cumulative goals, 80% threshold for max_loss). Inverted logic for max_loss (target is ceiling). CRUD via Server Actions. | `src/features/goals/` (new feature), `src/lib/db/schema.ts` (+goals table), `src/app/(app)/goals/` (page, loading), sidebar updated. 35 tests, 614 total |
+| Mobile Responsive Polish | 2026-03-24 | Viewport meta tag, Sheet UI component (slide-from-left via Base UI Dialog), responsive sidebar (hidden md:flex + mobile drawer), mobile header bar, touch events for heatmap tooltips, horizontal scroll trade table, responsive page header, 44px touch targets via @media(pointer:coarse). | `src/app/layout.tsx`, `src/app/(app)/layout.tsx`, `src/components/ui/sheet.tsx` (new), `src/shared/components/sidebar.tsx` (refactored), `src/shared/components/mobile-sidebar.tsx` (new), heatmap cell, trade list, page header, globals.css |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 
