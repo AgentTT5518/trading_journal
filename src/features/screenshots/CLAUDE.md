@@ -43,11 +43,11 @@ Screenshot and attachment management for trades — filesystem-based image stora
 ## Progress
 - [x] CLAUDE.md created (this file)
 - [x] Feature logger created
-- [ ] Requirements written
-- [ ] Architecture updated
+- [x] Requirements written
+- [x] Architecture updated
 - [x] Implementation complete
 - [x] Tests passing (206 tests, 12 files)
-- [ ] ARCHITECTURE.md Feature Log updated
+- [x] ARCHITECTURE.md Feature Log updated
 
 ## Cross-Boundary Edit Log
 | Date | File | Change | Approved By |

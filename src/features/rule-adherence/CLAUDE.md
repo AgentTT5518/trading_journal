@@ -33,11 +33,18 @@ Rule adherence scoring — structured playbook rules (entry/exit/sizing) with pe
 ## Progress
 - [x] CLAUDE.md created (this file)
 - [x] Feature logger created
-- [ ] Implementation complete
-- [ ] Tests passing
-- [ ] Cross-boundary edits logged below
+- [x] Implementation complete
+- [x] Tests passing (154 tests)
+- [x] Cross-boundary edits logged below
+- [x] ARCHITECTURE.md Feature Log updated
 
 ## Cross-Boundary Edit Log
 | Date | File | Change | Approved By |
 |------|------|--------|-------------|
 | 2026-03-23 | `src/lib/db/schema.ts` | Added playbookRules + tradeRuleChecks tables + relations | Plan pre-approved |
+| 2026-03-24 | `src/app/(app)/playbooks/[id]/page.tsx` | Added RuleManager + AdherenceOverview to playbook detail | Plan pre-approved |
+| 2026-03-24 | `src/app/(app)/trades/[id]/edit/page.tsx` | Added TradeRulesTab to trade edit | Plan pre-approved |
+| 2026-03-24 | `src/app/(app)/trades/new/page.tsx` | Added TradeRulesTab to new trade form | Plan pre-approved |
+| 2026-03-24 | `src/features/trades/services/actions.ts` | Added rule check sync on trade create/update | Plan pre-approved |
+| 2026-03-24 | `src/features/trades/components/trade-form.tsx` | Added rule checklist section | Plan pre-approved |
+| 2026-03-24 | `src/features/trades/components/trade-edit-form.tsx` | Added rule checklist section | Plan pre-approved |
