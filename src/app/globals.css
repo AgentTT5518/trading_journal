@@ -127,3 +127,13 @@
     @apply font-sans;
   }
 }
+
+/* Mobile touch targets — only applies on touch devices */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

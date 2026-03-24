@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CalendarDay } from '../types';
 import { getPnlColorClass } from '../utils/color-tiers';
@@ -14,7 +14,22 @@ type PnlHeatmapCellProps = {
 
 export function PnlHeatmapCell({ day, maxProfit, maxLoss }: PnlHeatmapCellProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const cellRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Close tooltip on outside touch
+  useEffect(() => {
+    if (!showTooltip) return;
+
+    function handleTouchOutside(e: TouchEvent) {
+      if (cellRef.current && !cellRef.current.contains(e.target as Node)) {
+        setShowTooltip(false);
+      }
+    }
+
+    document.addEventListener('touchstart', handleTouchOutside);
+    return () => document.removeEventListener('touchstart', handleTouchOutside);
+  }, [showTooltip]);
 
   if (!day.isCurrentMonth) {
     return <div className="aspect-square" />;
@@ -34,9 +49,17 @@ export function PnlHeatmapCell({ day, maxProfit, maxLoss }: PnlHeatmapCellProps)
 
   return (
     <div
+      ref={cellRef}
       className="relative"
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
+      onTouchStart={(e) => {
+        // Toggle tooltip on tap (don't prevent default — allows click-through)
+        if (!showTooltip) {
+          e.preventDefault();
+          setShowTooltip(true);
+        }
+      }}
     >
       <div
         role={isClickable ? 'button' : undefined}
