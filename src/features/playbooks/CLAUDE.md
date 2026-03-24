@@ -43,12 +43,12 @@ Tags and playbook management — predefined and custom tags grouped by category 
 ## Progress
 - [x] CLAUDE.md created (this file)
 - [x] Feature logger created
-- [ ] Requirements written
-- [ ] Architecture updated
+- [x] Requirements written
+- [x] Architecture updated
 - [x] Implementation complete (Phase 7a: Tags)
 - [x] Implementation complete (Phase 7b: Playbooks)
 - [x] Tests passing (184 tests, 9 files)
-- [ ] ARCHITECTURE.md Feature Log updated
+- [x] ARCHITECTURE.md Feature Log updated
 
 ## Cross-Boundary Edit Log
 | Date | File | Change | Approved By |

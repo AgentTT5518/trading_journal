@@ -1,9 +1,9 @@
 # Architecture — Trading Journal
 
-> Last updated: 2026-03-22 (Added Screenshots, Playbooks & Tags, Reviews to Feature Log) | Updated by: Claude Code
+> Last updated: 2026-03-24 (Added Correlation Analysis, Rule Adherence, Review Auto-population; updated Component Map & Data Model) | Updated by: Claude Code
 
 ## System Overview
-Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, psychology, analytics, and structured reviews. All core features are complete: Trades (stock/option/crypto with partial exits), Dashboard (with date range filtering and advanced metrics), Journal, Playbooks, Tags, Reviews, Screenshots, and Settings.
+Trading Journal is a local-first swing trading journal for stocks, options, and crypto. It runs on localhost for a solo trader, providing trade logging, P&L tracking, psychology, analytics, and structured reviews. All core features are complete: Trades (stock/option/crypto with partial exits), Dashboard (with date range filtering and advanced metrics), Journal, Analytics (P&L heatmap + correlation analysis), Playbooks, Tags, Reviews (with auto-populated metrics), Rule Adherence scoring, Screenshots, and Settings.
 
 ## Architecture Diagram
 ```mermaid
@@ -72,6 +72,21 @@ graph TB
 | EmptyState | `src/shared/components/empty-state.tsx` | Dashed border message + action | — |
 | PnlBadge | `src/shared/components/pnl-badge.tsx` | Green/red currency badge | formatCurrency |
 | LinkButton | `src/shared/components/link-button.tsx` | Next.js Link styled as button | buttonVariants |
+| CorrelationDashboard | `src/features/correlation-analysis/components/correlation-dashboard.tsx` | Top-level analytics view composing matrix, scatter, and insights | CorrelationMatrix, CorrelationScatter, CorrelationInsights |
+| CorrelationMatrix | `src/features/correlation-analysis/components/correlation-matrix.tsx` | Pearson correlation heatmap grid (psychology fields × P&L) | — |
+| CorrelationScatter | `src/features/correlation-analysis/components/correlation-scatter.tsx` | Scatter plot of selected psychology field vs P&L outcome | recharts |
+| CorrelationInsights | `src/features/correlation-analysis/components/correlation-insights.tsx` | Auto-generated text insights from correlation data | — |
+| CorrelationQueries | `src/features/correlation-analysis/services/queries.ts` | Pearson correlation computation, scatter data, boolean field comparisons | getTrades from trades feature |
+| AdherenceOverview | `src/features/rule-adherence/components/adherence-overview.tsx` | Dashboard showing overall rule adherence scores and P&L correlation | recharts |
+| AdherenceScoreBadge | `src/features/rule-adherence/components/adherence-score-badge.tsx` | Color-coded badge for adherence percentage | — |
+| RuleManager | `src/features/rule-adherence/components/rule-manager.tsx` | CRUD for playbook rules (entry/exit/sizing) | Server actions |
+| TradeRuleChecklist | `src/features/rule-adherence/components/trade-rule-checklist.tsx` | Per-trade rule check/uncheck UI | Server actions |
+| TradeRulesTab | `src/features/rule-adherence/components/trade-rules-tab.tsx` | Tab content for rule adherence on trade detail | TradeRuleChecklist, AdherenceScoreBadge |
+| RuleAdherenceActions | `src/features/rule-adherence/services/actions.ts` | createRule, updateRule, deleteRule, checkTradeRule, uncheckTradeRule | Drizzle, Zod |
+| RuleAdherenceQueries | `src/features/rule-adherence/services/queries.ts` | getRulesForPlaybook, getTradeChecks, getAdherenceStats, getAdherencePnlCorrelation | Drizzle |
+| ReviewBestWorstTrades | `src/features/reviews/components/review-best-worst-trades.tsx` | Best and worst trades display for review period | formatCurrency |
+| ReviewTickerBreakdown | `src/features/reviews/components/review-ticker-breakdown.tsx` | Per-ticker P&L breakdown table for review period | formatCurrency |
+| ReviewTradeSummary | `src/features/reviews/components/review-trade-summary.tsx` | Auto-populated trade summary stats for review period | — |
 | Calculations | `src/features/trades/services/calculations.ts` | grossPnl, netPnl, rMultiple, holdingDays, dte, deriveStatus (exit-legs aware), calculateExitLegsPnl, getPositionMultiplier | — |
 | Queries | `src/features/trades/services/queries.ts` | getTrades, getTradeById (both join exitLegs) | Drizzle relational queries, calculations |
 | Actions | `src/features/trades/services/actions.ts` | createTrade, updateTrade, deleteTrade, addExitLeg, updateExitLeg, deleteExitLeg | Drizzle, Zod validation |
@@ -87,6 +102,9 @@ graph TB
 | JournalEntry | `journal_entries` table | id, date (YYYY-MM-DD), category enum, title, content, mood (1-5), energy (1-5), marketSentiment enum, createdAt, updatedAt | Has many JournalTrades |
 | JournalTrade | `journal_trades` table | id, journalEntryId, tradeId — unique(journalEntryId, tradeId) | Belongs to JournalEntry + Trade (cascade delete) |
 | Settings | `settings` table | id='default' (single row), traderName, timezone, currency, startingCapital (nullable), defaultCommission, defaultRiskPercent, positionSizingMethod enum, dateFormat, theme enum, createdAt, updatedAt | Standalone — no FK relations |
+
+| PlaybookRule | `playbook_rules` table | id, playbookId, category (entry/exit/sizing), description, sortOrder, createdAt | Belongs to Playbook (cascade delete), has many TradeRuleChecks |
+| TradeRuleCheck | `trade_rule_checks` table | id, tradeId, ruleId, checked (boolean), checkedAt | Belongs to Trade + PlaybookRule (cascade delete) |
 
 ### Schema Notes
 - All IDs are nanoid(12) text primary keys
@@ -121,9 +139,13 @@ Server Actions for mutations; GET API routes for file downloads.
 | GET Route | `/api/export/csv` | Stream all trades as CSV with Content-Disposition | None |
 | GET Route | `/api/export/json` | Stream all trades as JSON with Content-Disposition | None |
 
-Future API routes (Phase 3+):
-- `GET /api/screenshots/[id]` — serve images from `data/screenshots/`
-- `GET /api/analytics/*` — chart data endpoints
+| Server Action | `createRule` | Create playbook rule (entry/exit/sizing category) | None |
+| Server Action | `updateRule` | Update playbook rule description/sort order | None |
+| Server Action | `deleteRule` | Delete playbook rule + cascade trade checks | None |
+| Server Action | `checkTradeRule` | Mark a rule as followed for a trade | None |
+| Server Action | `uncheckTradeRule` | Unmark a rule check for a trade | None |
+| GET Route | `/api/screenshots/[tradeId]` | Upload screenshot (POST) or list screenshots (GET) | None |
+| GET Route | `/api/screenshots/[tradeId]/[filename]` | Serve individual screenshot image | None |
 
 ## Route Structure
 
@@ -214,6 +236,9 @@ Service Error -> try-catch -> Logger -> Typed errors (AppError, NotFoundError, V
 | Screenshots | 2026-03-13 | Filesystem-based storage in `data/screenshots/[tradeId]/` (not blob column). Drag-and-drop upload with MIME type and size validation. Thumbnail gallery with lightbox modal. API routes for upload (POST) and serve (GET) with `path.basename()` traversal defense. Cleanup on trade deletion via service layer. | `src/features/screenshots/` (full feature), `src/lib/db/schema.ts` (+screenshots table), `src/app/api/screenshots/` (2 API routes), `src/features/trades/components/trade-detail.tsx` (+gallery integration). 206 tests |
 | Playbooks & Tags | 2026-03-13 | Tags grouped by 6 immutable categories (strategy, market_condition, timeframe, instrument, execution, mistake) + custom tags. Tag sync uses `db.transaction()` for atomicity. Playbooks define entry/exit rules, position sizing, market conditions. Computed playbook metrics (trade count, win rate) derived at query time. Collapsible category selector in trade form. | `src/features/playbooks/` (full feature), `src/lib/db/schema.ts` (+tags, tradeTags, playbooks tables), `src/app/(app)/playbooks/` + `src/app/(app)/tags/` (routes), `src/features/trades/` (+TagSelector, tag badges). 184 tests |
 | Reviews | 2026-03-13 | Structured daily/weekly/monthly reviews with date range selection. Metrics computed at query time from closed trades in range (win rate, total P&L, best/worst). JSON-stored rules (followed/broken). Grade assignment (A–F) with lessons learned and next-period goals. Review-trade junction table for linking. | `src/features/reviews/` (full feature), `src/lib/db/schema.ts` (+reviews, review_trades tables), `src/app/(app)/reviews/` (4 routes). 505 tests total |
+| Review Auto-population | 2026-03-24 | Auto-populated review detail with trade summaries, best/worst trades, and per-ticker P&L breakdown for the review period. Enhanced metrics service with ticker-level aggregation. | `src/features/reviews/components/review-best-worst-trades.tsx`, `review-ticker-breakdown.tsx`, `review-trade-summary.tsx` (3 new), `services/metrics.ts` (enhanced), `services/queries.ts` (enhanced). 159 tests |
+| Correlation Analysis | 2026-03-24 | Pearson correlation matrix between trade psychology fields (mood, confidence, FOMO, revenge) and P&L outcomes. Scatter plots for individual field exploration. Auto-generated text insights. Integrated into `/analytics` page. | `src/features/correlation-analysis/` (new feature), `src/app/(app)/analytics/page.tsx` (updated). 333 tests |
+| Rule Adherence | 2026-03-24 | Structured playbook rules (entry/exit/sizing categories) with per-trade checklists. Adherence scoring and P&L correlation analytics. Rule manager CRUD. Integrated into trade form and playbook detail. | `src/features/rule-adherence/` (new feature), `src/lib/db/schema.ts` (+playbookRules, tradeRuleChecks tables), `src/app/(app)/playbooks/[id]/page.tsx`, trade forms updated. 154 tests |
 
 > Add a row after completing each feature. Link to `docs/decisions/` for details.
 

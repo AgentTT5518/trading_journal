@@ -183,17 +183,18 @@ These are deferred to a later planning cycle. Captured here for reference.
 | 11 | **Trade replay / backtesting** | Step through historical trades to practice decisions; simulated entry/exit with hidden outcome reveal | High |
 | 12 | **PDF/Excel reports** | Generate weekly/monthly performance reports as downloadable PDF or Excel files | Medium |
 | 13 | **Mobile responsive polish** | Touch events for heatmap tooltips, responsive table layouts, mobile sidebar drawer | Medium |
-| 14 | **Review auto-population** | Wire review detail pages to auto-pull trade summaries, win rates, best/worst trades for the review period | Medium |
+| ~~14~~ | ~~**Review auto-population**~~ | ~~Wire review detail pages to auto-pull trade summaries, win rates, best/worst trades for the review period~~ | ~~Medium~~ **DONE** (PR #23, 2026-03-24) |
 | 15 | **Broker CSV import** | Parse CSV exports from TD Ameritrade, IBKR, Schwab into the trade schema with field mapping UI | High |
-| 16 | **Correlation analysis** | Surface patterns between psychology (mood, energy, FOMO) and P&L outcomes; scatter plots + regression | High (needs D1 data) |
-| 17 | **Rule adherence scoring** | Track which playbook rules were followed/broken per trade; correlate with outcomes | Medium |
+| ~~16~~ | ~~**Correlation analysis**~~ | ~~Surface patterns between psychology (mood, energy, FOMO) and P&L outcomes; scatter plots + regression~~ | ~~High~~ **DONE** (PR #24, 2026-03-24) |
+| ~~17~~ | ~~**Rule adherence scoring**~~ | ~~Track which playbook rules were followed/broken per trade; correlate with outcomes~~ | ~~Medium~~ **DONE** (PR #24, 2026-03-24) |
 | 18 | **Goal tracking dashboard** | Set monthly P&L targets, max loss limits, trade frequency goals; progress bars + alerts | Medium |
 
 ### Future dependency notes
-- **Item 16** (correlation analysis) requires **Phase D** (psychology UI) to have data to correlate
-- **Item 14** (review auto-population) is a natural follow-up to Phase B analytics queries
-- **Item 17** (rule adherence) builds on Playbooks feature — needs B5 first for playbook perf baseline
+- ~~**Item 16** (correlation analysis) requires **Phase D** (psychology UI) to have data to correlate~~ **SHIPPED**
+- ~~**Item 14** (review auto-population) is a natural follow-up to Phase B analytics queries~~ **SHIPPED**
+- ~~**Item 17** (rule adherence) builds on Playbooks feature — needs B5 first for playbook perf baseline~~ **SHIPPED**
 - **Items 11, 15** are standalone but high-effort; good candidates for dedicated feature branches
+- **Remaining backlog:** Items 11, 12, 13, 15, 18 (5 items)
 
 ---
 
