@@ -50,13 +50,11 @@ export function TagSelector({
   }
 
   function toggleTag(tagId: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(tagId)) next.delete(tagId);
-      else next.add(tagId);
-      onSelectionChange?.(Array.from(next));
-      return next;
-    });
+    const next = new Set(selectedIds);
+    if (next.has(tagId)) next.delete(tagId);
+    else next.add(tagId);
+    setSelectedIds(next);
+    onSelectionChange?.(Array.from(next));
   }
 
   function toggleCategory(category: string) {
