@@ -293,6 +293,23 @@ export const settings = sqliteTable('settings', {
 });
 
 // ============================================================
+// GOALS (Goal Tracking)
+// ============================================================
+
+export const goals = sqliteTable('goals', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  goalType: text('goal_type', {
+    enum: ['monthly_pnl', 'max_loss', 'trade_count', 'win_rate'],
+  }).notNull(),
+  targetValue: real('target_value').notNull(),
+  period: text('period', { enum: ['weekly', 'monthly'] }).notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ============================================================
 // RELATIONS
 // ============================================================
 

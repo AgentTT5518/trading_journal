@@ -11,11 +11,12 @@ import {
   BookMarked,
   Tags,
   ClipboardCheck,
+  Target,
   Settings,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-const navItems: { href: string; label: string; enabled: boolean; icon: LucideIcon }[] = [
+export const navItems: { href: string; label: string; enabled: boolean; icon: LucideIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', enabled: true, icon: LayoutDashboard },
   { href: '/analytics', label: 'Analytics', enabled: true, icon: CalendarDays },
   { href: '/trades', label: 'Trades', enabled: true, icon: ArrowLeftRight },
@@ -23,46 +24,54 @@ const navItems: { href: string; label: string; enabled: boolean; icon: LucideIco
   { href: '/playbooks', label: 'Playbooks', enabled: true, icon: BookMarked },
   { href: '/tags', label: 'Tags', enabled: true, icon: Tags },
   { href: '/reviews', label: 'Reviews', enabled: true, icon: ClipboardCheck },
+  { href: '/goals', label: 'Goals', enabled: true, icon: Target },
   { href: '/settings', label: 'Settings', enabled: true, icon: Settings },
 ];
 
-export function Sidebar() {
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r bg-muted/30">
+    <nav className="flex-1 space-y-1 p-2">
+      {navItems.map((item) => {
+        const isActive = pathname.startsWith(item.href);
+        const Icon = item.icon;
+        return item.enabled ? (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              isActive
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        ) : (
+          <span
+            key={item.href}
+            className="flex items-center gap-2 cursor-not-allowed rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/50"
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </span>
+        );
+      })}
+    </nav>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden md:flex h-full w-56 flex-col border-r bg-muted/30">
       <div className="flex h-14 items-center border-b px-4">
         <h1 className="text-lg font-semibold">Trading Journal</h1>
       </div>
-      <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return item.enabled ? (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ) : (
-            <span
-              key={item.href}
-              className="flex items-center gap-2 cursor-not-allowed rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/50"
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </span>
-          );
-        })}
-      </nav>
+      <SidebarNav />
     </aside>
   );
 }
