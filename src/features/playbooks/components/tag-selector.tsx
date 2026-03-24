@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Tag, TagCategory } from '../types';
 
@@ -41,6 +41,16 @@ export function TagSelector({
 }: TagSelectorProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(initialSelectedIds));
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const isFirstRender = useRef(true);
+
+  // Notify parent of selection changes after render (avoids setState-during-render error)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    onSelectionChange?.(Array.from(selectedIds));
+  }, [selectedIds, onSelectionChange]);
 
   // Group tags by category
   const grouped: Record<string, Tag[]> = {};
@@ -54,7 +64,6 @@ export function TagSelector({
       const next = new Set(prev);
       if (next.has(tagId)) next.delete(tagId);
       else next.add(tagId);
-      onSelectionChange?.(Array.from(next));
       return next;
     });
   }
