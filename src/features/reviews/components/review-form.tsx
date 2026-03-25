@@ -173,7 +173,7 @@ export function ReviewForm({ fetchTradesAction }: ReviewFormProps) {
                       <td className={`px-3 py-2 text-right ${t.netPnl > 0 ? 'text-green-600' : t.netPnl < 0 ? 'text-red-600' : ''}`}>
                         {formatCurrency(t.netPnl)}
                       </td>
-                      <input type="hidden" name="tradeIds" value={t.id} />
+                      <td className="hidden"><input type="hidden" name="tradeIds" value={t.id} /></td>
                     </tr>
                   ))}
                 </tbody>

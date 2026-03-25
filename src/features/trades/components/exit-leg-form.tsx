@@ -102,7 +102,7 @@ export function ExitLegForm({ tradeId, remainingQty, existingLeg, onDone }: Exit
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="el-exitReason">Exit Reason</Label>
-          <Select name="exitReason" defaultValue={existingLeg?.exitReason ?? ''}>
+          <Select key={`exitReason-${existingLeg?.exitReason}`} name="exitReason" defaultValue={existingLeg?.exitReason ?? undefined}>
             <SelectTrigger id="el-exitReason">
               <SelectValue placeholder="Select reason" />
             </SelectTrigger>
