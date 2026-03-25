@@ -119,7 +119,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
 
                 <div className="space-y-2">
                   <Label htmlFor="direction">Direction</Label>
-                  <Select name="direction" defaultValue={trade.direction}>
+                  <Select key={`direction-${trade.direction}`} name="direction" defaultValue={trade.direction}>
                     <SelectTrigger id="direction">
                       <SelectValue />
                     </SelectTrigger>
@@ -132,7 +132,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
 
                 <div className="space-y-2">
                   <Label htmlFor="orderType">Order Type</Label>
-                  <Select name="orderType" defaultValue={trade.orderType ?? 'limit'}>
+                  <Select key={`orderType-${trade.orderType}`} name="orderType" defaultValue={trade.orderType ?? 'limit'}>
                     <SelectTrigger id="orderType">
                       <SelectValue />
                     </SelectTrigger>
@@ -264,7 +264,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-2">
                       <Label htmlFor="optionType">Option Type</Label>
-                      <Select name="optionType" defaultValue={trade.optionType ?? 'call'}>
+                      <Select key={`optionType-${trade.optionType}`} name="optionType" defaultValue={trade.optionType ?? 'call'}>
                         <SelectTrigger id="optionType">
                           <SelectValue />
                         </SelectTrigger>
@@ -388,7 +388,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="spreadType">Spread Type</Label>
-                        <Select name="spreadType" defaultValue={trade.spreadType ?? ''}>
+                        <Select key={`spreadType-${trade.spreadType}`} name="spreadType" defaultValue={trade.spreadType ?? undefined}>
                           <SelectTrigger id="spreadType">
                             <SelectValue placeholder="Select type" />
                           </SelectTrigger>
@@ -471,7 +471,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="marketCapCategory">Market Cap Category</Label>
-                      <Select name="marketCapCategory" defaultValue={trade.marketCapCategory ?? ''}>
+                      <Select key={`marketCapCategory-${trade.marketCapCategory}`} name="marketCapCategory" defaultValue={trade.marketCapCategory ?? undefined}>
                         <SelectTrigger id="marketCapCategory">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -526,7 +526,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
 
                     <div className="space-y-2">
                       <Label htmlFor="exitReason">Exit Reason</Label>
-                      <Select name="exitReason" defaultValue={trade.exitReason ?? ''}>
+                      <Select key={`exitReason-${trade.exitReason}`} name="exitReason" defaultValue={trade.exitReason ?? undefined}>
                         <SelectTrigger id="exitReason">
                           <SelectValue placeholder="Select reason" />
                         </SelectTrigger>
@@ -637,7 +637,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="weeklyTrend">Weekly Trend</Label>
-                    <Select name="weeklyTrend" defaultValue={trade.weeklyTrend ?? ''}>
+                    <Select key={`weeklyTrend-${trade.weeklyTrend}`} name="weeklyTrend" defaultValue={trade.weeklyTrend ?? undefined}>
                       <SelectTrigger id="weeklyTrend">
                         <SelectValue placeholder="Select trend" />
                       </SelectTrigger>
@@ -651,7 +651,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
 
                   <div className="space-y-2">
                     <Label htmlFor="marketRegime">Market Regime</Label>
-                    <Select name="marketRegime" defaultValue={trade.marketRegime ?? ''}>
+                    <Select key={`marketRegime-${trade.marketRegime}`} name="marketRegime" defaultValue={trade.marketRegime ?? undefined}>
                       <SelectTrigger id="marketRegime">
                         <SelectValue placeholder="Select regime" />
                       </SelectTrigger>
@@ -721,7 +721,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="volumeProfile">Volume Profile</Label>
-                    <Select name="volumeProfile" defaultValue={trade.volumeProfile ?? ''}>
+                    <Select key={`volumeProfile-${trade.volumeProfile}`} name="volumeProfile" defaultValue={trade.volumeProfile ?? undefined}>
                       <SelectTrigger id="volumeProfile">
                         <SelectValue placeholder="Select volume" />
                       </SelectTrigger>
@@ -884,7 +884,7 @@ export function TradeEditForm({ trade, tags, selectedTagIds, rulesByPlaybook = {
 
                   <div className="space-y-2">
                     <Label htmlFor="tradeGrade">Trade Grade</Label>
-                    <Select name="tradeGrade" defaultValue={trade.tradeGrade ?? ''}>
+                    <Select key={`tradeGrade-${trade.tradeGrade}`} name="tradeGrade" defaultValue={trade.tradeGrade ?? undefined}>
                       <SelectTrigger id="tradeGrade">
                         <SelectValue placeholder="Grade this trade" />
                       </SelectTrigger>
