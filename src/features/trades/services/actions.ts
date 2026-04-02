@@ -126,10 +126,13 @@ export async function createTrade(
     const parsed = tradeInsertSchema.safeParse(parseTradeFormData(raw));
 
     if (!parsed.success) {
+      const errors = collectFieldErrors(parsed.error.issues);
+      const failedFields = Object.keys(errors).join(', ');
+      log.error(`Trade creation validation failed: ${failedFields}`, new Error('Validation failed'));
       return {
         success: false,
-        message: 'Validation failed',
-        errors: collectFieldErrors(parsed.error.issues),
+        message: `Validation failed: ${failedFields}`,
+        errors,
       };
     }
 
