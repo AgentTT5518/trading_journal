@@ -5,9 +5,15 @@ import { reviews, reviewTrades, trades } from '@/lib/db/schema';
 import { eq, sql, desc, and, gte, lte } from 'drizzle-orm';
 import { log } from '../logger';
 import { computeReviewMetrics } from './metrics';
-import type { ReviewWithTradeCount, ReviewWithMetrics, TradeSummary } from '../types';
+import type {
+  ReviewWithTradeCount,
+  ReviewWithMetrics,
+  ReviewWithSnapshot,
+  ReviewSnapshot,
+  TradeSummary,
+} from '../types';
 
-export async function getReviews(): Promise<ReviewWithTradeCount[]> {
+export async function getReviews(): Promise<ReviewWithSnapshot[]> {
   try {
     const rows = await db
       .select({
@@ -30,7 +36,64 @@ export async function getReviews(): Promise<ReviewWithTradeCount[]> {
       .groupBy(reviews.id)
       .orderBy(desc(reviews.startDate));
 
-    return rows as ReviewWithTradeCount[];
+    // Load all linked trade rows in one query for snapshot computation
+    const linkedRows = await db
+      .select({
+        reviewId: reviewTrades.reviewId,
+        direction: trades.direction,
+        entryPrice: trades.entryPrice,
+        exitPrice: trades.exitPrice,
+        exitDate: trades.exitDate,
+        positionSize: trades.positionSize,
+        commissions: trades.commissions,
+        fees: trades.fees,
+      })
+      .from(reviewTrades)
+      .innerJoin(trades, eq(reviewTrades.tradeId, trades.id));
+
+    const snapshotMap = new Map<string, ReviewSnapshot>();
+    for (const r of linkedRows) {
+      const existing = snapshotMap.get(r.reviewId) ?? {
+        closedTradeCount: 0,
+        winCount: 0,
+        lossCount: 0,
+        winRate: null,
+        totalPnl: 0,
+      };
+      if (r.exitDate && r.exitPrice != null) {
+        const gross =
+          r.direction === 'long'
+            ? (r.exitPrice - r.entryPrice) * r.positionSize
+            : (r.entryPrice - r.exitPrice) * r.positionSize;
+        const net = gross - (r.commissions ?? 0) - (r.fees ?? 0);
+        existing.closedTradeCount += 1;
+        existing.totalPnl += net;
+        if (net > 0) existing.winCount += 1;
+        else existing.lossCount += 1;
+      }
+      snapshotMap.set(r.reviewId, existing);
+    }
+
+    return (rows as ReviewWithTradeCount[]).map((review) => {
+      const s = snapshotMap.get(review.id) ?? {
+        closedTradeCount: 0,
+        winCount: 0,
+        lossCount: 0,
+        winRate: null,
+        totalPnl: 0,
+      };
+      const snapshot: ReviewSnapshot = {
+        closedTradeCount: s.closedTradeCount,
+        winCount: s.winCount,
+        lossCount: s.lossCount,
+        winRate:
+          s.closedTradeCount > 0
+            ? Math.round((s.winCount / s.closedTradeCount) * 100)
+            : null,
+        totalPnl: Math.round(s.totalPnl * 100) / 100,
+      };
+      return { ...review, snapshot };
+    });
   } catch (error) {
     log.error('Failed to fetch reviews', error as Error);
     throw error;
