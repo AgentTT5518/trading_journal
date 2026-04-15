@@ -59,6 +59,23 @@ export type DashboardData = {
   rMultipleStats: RMultipleStats;
 };
 
+export type TopTradeRow = {
+  id: string;
+  ticker: string;
+  assetClass: string;
+  direction: string;
+  exitDate: string;
+  netPnl: number;
+  pnlPercent: number | null;
+};
+
+export type TopTradesData = {
+  winners: TopTradeRow[];
+  losers: TopTradeRow[];
+};
+
+export type TopTradesRange = '30d' | '90d' | '180d' | 'all';
+
 export type DashboardFilterOptions = {
   from?: string;
   to?: string;
