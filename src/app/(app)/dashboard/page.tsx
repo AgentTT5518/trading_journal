@@ -1,4 +1,4 @@
-import { getDashboardData } from '@/features/dashboard/services/queries';
+import { getDashboardData, getTopTradesData } from '@/features/dashboard/services/queries';
 import { getSettings } from '@/features/settings/services/queries';
 import { PageHeader } from '@/shared/components/page-header';
 import { EmptyState } from '@/shared/components/empty-state';
@@ -8,14 +8,37 @@ import { DashboardCharts } from '@/features/dashboard/components/dashboard-chart
 import { RecentTradesTable } from '@/features/dashboard/components/recent-trades-table';
 import { RMultipleStatsCards } from '@/features/dashboard/components/r-multiple-stats';
 import { DateRangeFilter } from '@/features/dashboard/components/date-range-filter';
+import { TopTradesSection } from '@/features/dashboard/components/top-trades-section';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatPercent } from '@/shared/utils/formatting';
 
 export const dynamic = 'force-dynamic';
 
 type DashboardPageProps = {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; topRange?: string }>;
 };
+
+function getTopTradesDateRange(range?: string): { from?: string; to?: string } {
+  if (!range || range === 'all') return {};
+  const now = new Date();
+  const to = now.toISOString();
+  let days: number;
+  switch (range) {
+    case '30d':
+      days = 30;
+      break;
+    case '90d':
+      days = 90;
+      break;
+    case '180d':
+      days = 180;
+      break;
+    default:
+      return {};
+  }
+  const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to };
+}
 
 function getDateRange(range?: string): { from?: string; to?: string } {
   if (!range || range === 'all') return {};
@@ -44,8 +67,11 @@ function getDateRange(range?: string): { from?: string; to?: string } {
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = await searchParams;
   const dateRange = getDateRange(params.range);
-  const [data, settings] = await Promise.all([
+  const topRange = params.topRange ?? 'all';
+  const topDateRange = getTopTradesDateRange(topRange);
+  const [data, topTrades, settings] = await Promise.all([
     getDashboardData(dateRange),
+    getTopTradesData(topDateRange),
     getSettings(),
   ]);
   const { summary } = data;
@@ -175,6 +201,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             assetClassBreakdown={data.assetClassBreakdown}
             winLoss={data.winLoss}
             rMultipleDistribution={data.rMultipleStats.distribution}
+            dateFormat={settings.dateFormat}
+          />
+
+          <TopTradesSection
+            data={topTrades}
+            activeRange={topRange}
             dateFormat={settings.dateFormat}
           />
 

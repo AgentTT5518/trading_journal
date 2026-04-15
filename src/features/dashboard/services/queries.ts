@@ -14,6 +14,8 @@ import type {
   RMultipleBucket,
   DashboardFilterOptions,
   MoodHeatmapDay,
+  TopTradesData,
+  TopTradeRow,
 } from '../types';
 import { log } from '../logger';
 
@@ -268,6 +270,68 @@ export function computeRMultipleStats(closedTrades: TradeWithCalculations[]): RM
     (avgLossR != null ? lossRate * avgLossR : 0);
 
   return { distribution, expectancy, avgWinR, avgLossR, totalWithR: rValues.length };
+}
+
+export function computeTopTrades(
+  trades: TradeWithCalculations[],
+  options?: DashboardFilterOptions,
+  limit = 5,
+): TopTradesData {
+  let closedTrades = trades.filter(
+    (t) => t.status === 'closed' && t.netPnl != null,
+  );
+
+  if (options?.from) {
+    closedTrades = closedTrades.filter((t) => {
+      const exitDate = getEffectiveExitDate(t);
+      return exitDate != null && exitDate >= options.from!;
+    });
+  }
+  if (options?.to) {
+    closedTrades = closedTrades.filter((t) => {
+      const exitDate = getEffectiveExitDate(t);
+      return exitDate != null && exitDate <= options.to!;
+    });
+  }
+
+  const toRow = (t: TradeWithCalculations): TopTradeRow => ({
+    id: t.id,
+    ticker: t.ticker,
+    assetClass: t.assetClass,
+    direction: t.direction,
+    /* c8 ignore next */
+    exitDate: getEffectiveExitDate(t) ?? '',
+    // closedTrades filter guarantees netPnl != null
+    netPnl: t.netPnl as number,
+    pnlPercent: t.pnlPercent,
+  });
+
+  const winners = closedTrades
+    .filter((t) => (t.netPnl as number) > 0)
+    .sort((a, b) => (b.netPnl as number) - (a.netPnl as number))
+    .slice(0, limit)
+    .map(toRow);
+
+  const losers = closedTrades
+    .filter((t) => (t.netPnl as number) < 0)
+    .sort((a, b) => (a.netPnl as number) - (b.netPnl as number))
+    .slice(0, limit)
+    .map(toRow);
+
+  return { winners, losers };
+}
+
+export async function getTopTradesData(
+  options?: DashboardFilterOptions,
+  limit = 5,
+): Promise<TopTradesData> {
+  try {
+    const trades = await getTrades();
+    return computeTopTrades(trades, options, limit);
+  } catch (error) {
+    log.error('Failed to fetch top trades data', error as Error);
+    throw error;
+  }
 }
 
 export async function getDashboardData(
