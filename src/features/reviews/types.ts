@@ -11,6 +11,18 @@ export type ReviewWithTradeCount = Review & {
   tradeCount: number;
 };
 
+export type ReviewSnapshot = {
+  closedTradeCount: number;
+  winCount: number;
+  lossCount: number;
+  winRate: number | null;
+  totalPnl: number;
+};
+
+export type ReviewWithSnapshot = ReviewWithTradeCount & {
+  snapshot: ReviewSnapshot;
+};
+
 export type TradeHighlight = {
   id: string;
   ticker: string;
