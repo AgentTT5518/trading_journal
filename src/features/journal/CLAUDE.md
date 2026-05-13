@@ -61,3 +61,4 @@ Free-form daily trading diary — pre-market prep, post-market reflections, mark
 | 2026-03-15 | `src/lib/db/schema.ts` | Added journalEntries + journalTrades tables + relations | Plan pre-approved |
 | 2026-03-15 | `src/shared/components/sidebar.tsx` | Enable Journal nav item | Plan pre-approved |
 | 2026-03-15 | `src/app/(app)/journal/` | New routes for journal CRUD (6 files) | Plan pre-approved |
+| 2026-05-13 | `ARCHITECTURE.md` | Updated Component Map (JournalList + JournalFilters rows) and Feature Log row for Journal Filter Toolbar | User |
